@@ -61,8 +61,10 @@ export function StaffCard({
 
   const horariosConValores = sortedHorarios.filter((h) => h.jornada_manana || h.jornada_tarde)
 
+  const firstName = nombre_completo.split(" ")[0]
+  const firstNameCapitalized = firstName.charAt(0).toUpperCase() + firstName.slice(1).toLowerCase()  
   const whatsappUrl = telefono
-    ? `https://wa.me/57${telefono.replace(/\D/g, "")}?text=Hola%20${encodeURIComponent(nombre_completo)}`
+    ? `https://wa.me/57${telefono.replace(/\D/g, "")}?text=Hola%20${encodeURIComponent(firstNameCapitalized)}`
     : null
 
   const initials = getInitials(nombre_completo)
@@ -77,7 +79,7 @@ export function StaffCard({
             {foto_url ? (
               <Image src={foto_url} alt={nombre_completo} fill className="object-cover" />
             ) : (
-              <div className="flex items-center justify-center w-full h-full text-white text-lg font-semibold">
+              <div className="flex items-center justify-center w-full h-full text-white text-2xl font-semibold tracking-wider">
                 {initials}
               </div>
             )}
