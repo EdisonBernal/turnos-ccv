@@ -51,6 +51,26 @@ export function EditEmployeeModal({ employee, horarios, areas, onUpdate, onClose
     }),
   )
 
+  // Global preset times to apply to multiple days (ej: mes completo)
+  const [globalMorningStart, setGlobalMorningStart] = useState("")
+  const [globalMorningEnd, setGlobalMorningEnd] = useState("")
+  const [globalAfternoonStart, setGlobalAfternoonStart] = useState("")
+  const [globalAfternoonEnd, setGlobalAfternoonEnd] = useState("")
+
+  const applyGlobalToAll = (applyMorning: boolean, applyAfternoon: boolean) => {
+    const newSchedules = schedules.map((s) => {
+      const copy = { ...s }
+      if (applyMorning) {
+        copy.jornada_manana = globalMorningStart && globalMorningEnd ? `${globalMorningStart}-${globalMorningEnd}` : ""
+      }
+      if (applyAfternoon) {
+        copy.jornada_tarde = globalAfternoonStart && globalAfternoonEnd ? `${globalAfternoonStart}-${globalAfternoonEnd}` : ""
+      }
+      return copy
+    })
+    setSchedules(newSchedules)
+  }
+
   const handleInfoSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (formData.telefono && formData.telefono.replace(/\D/g, "").length !== 10) {
@@ -223,6 +243,75 @@ export function EditEmployeeModal({ employee, horarios, areas, onUpdate, onClose
         {tab === "horarios" && (
           <form onSubmit={handleScheduleSubmit} className="p-6 space-y-4 pb-24">
             <div className="space-y-4">
+              {/* Presets globales: aplicar horario a todo el mes */}
+              <div className="border border-border rounded-lg p-4 bg-background/50">
+                <h3 className="font-semibold text-foreground text-base mb-2">Aplicar horario a todos los días</h3>
+                <div className="grid grid-cols-2 gap-4 mb-3">
+                  <div>
+                    <label className="block text-xs text-muted-foreground mb-1">Mañana Inicio</label>
+                    <input
+                      type="time"
+                      value={globalMorningStart}
+                      onChange={(e) => setGlobalMorningStart(e.target.value)}
+                      className="w-full px-3 py-2.5 border border-border rounded-lg bg-background text-foreground text-sm"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-muted-foreground mb-1">Mañana Fin</label>
+                    <input
+                      type="time"
+                      value={globalMorningEnd}
+                      onChange={(e) => setGlobalMorningEnd(e.target.value)}
+                      className="w-full px-3 py-2.5 border border-border rounded-lg bg-background text-foreground text-sm"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4 mb-3">
+                  <div>
+                    <label className="block text-xs text-muted-foreground mb-1">Tarde Inicio</label>
+                    <input
+                      type="time"
+                      value={globalAfternoonStart}
+                      onChange={(e) => setGlobalAfternoonStart(e.target.value)}
+                      className="w-full px-3 py-2.5 border border-border rounded-lg bg-background text-foreground text-sm"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-muted-foreground mb-1">Tarde Fin</label>
+                    <input
+                      type="time"
+                      value={globalAfternoonEnd}
+                      onChange={(e) => setGlobalAfternoonEnd(e.target.value)}
+                      className="w-full px-3 py-2.5 border border-border rounded-lg bg-background text-foreground text-sm"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => applyGlobalToAll(true, false)}
+                    className="px-3 py-2 bg-primary text-primary-foreground rounded-lg text-sm cursor-pointer"
+                  >
+                    Aplicar mañana a todos los días
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => applyGlobalToAll(false, true)}
+                    className="px-3 py-2 bg-primary text-primary-foreground rounded-lg text-sm cursor-pointer"
+                  >
+                    Aplicar tarde a todos los días
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => applyGlobalToAll(true, true)}
+                    className="px-3 py-2 bg-primary text-primary-foreground rounded-lg text-sm cursor-pointer"
+                  >
+                    Aplicar ambos a todos los días
+                  </button>
+                </div>
+              </div>
               {schedules.map((schedule, idx) => (
                 <div key={schedule.dia} className="border border-border rounded-lg p-4 space-y-3 bg-background/50">
                   <h3 className="font-semibold text-foreground text-base">{schedule.dia}</h3>
