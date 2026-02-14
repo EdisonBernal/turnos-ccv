@@ -117,6 +117,12 @@ export function EditEmployeeModal({ employee, horarios, areas, onUpdate, onClose
     setSchedules(newSchedules)
   }
 
+  const setMorningDefault = (idx: number) => {
+    const newSchedules = [...schedules]
+    newSchedules[idx].jornada_manana = "07:00-12:59"
+    setSchedules(newSchedules)
+  }
+
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className="bg-card rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
@@ -320,15 +326,26 @@ export function EditEmployeeModal({ employee, horarios, areas, onUpdate, onClose
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
                       <label className="text-sm font-medium text-foreground">Jornada Mañana</label>
-                      {schedule.jornada_manana && (
-                        <button
-                          type="button"
-                          onClick={() => clearTimeRange(idx, 'manana')}
-                          className="text-xs text-red-500 hover:text-red-700 underline cursor-pointer"
-                        >
-                          Limpiar
-                        </button>
-                      )}
+                      <div className="flex items-center gap-2">
+                        {(schedule.dia === "Domingo" || schedule.dia === "Sábado") && (
+                          <button
+                            type="button"
+                            onClick={() => setMorningDefault(idx)}
+                            className="text-xs text-emerald-600 hover:text-emerald-800 underline cursor-pointer"
+                          >
+                            Disponibilidad
+                          </button>
+                        )}
+                        {schedule.jornada_manana && (
+                          <button
+                            type="button"
+                            onClick={() => clearTimeRange(idx, 'manana')}
+                            className="text-xs text-red-500 hover:text-red-700 underline cursor-pointer"
+                          >
+                            Limpiar
+                          </button>
+                        )}
+                      </div>
                     </div>
                     <div className="grid grid-cols-2 gap-3">
                       <div>
