@@ -121,7 +121,7 @@ export function EditEmployeeModal({ employee, horarios, areas, onUpdate, onClose
 
   const setMorningDefault = (idx: number) => {
     const newSchedules = [...schedules]
-    newSchedules[idx].jornada_manana = "07:00-12:59"
+    newSchedules[idx].jornada_manana = "07:00-11:59"
     setSchedules(newSchedules)
   }
 
@@ -205,7 +205,7 @@ export function EditEmployeeModal({ employee, horarios, areas, onUpdate, onClose
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-foreground mb-1">Foto (archivo o URL)</label>
+              <label className="block text-sm font-medium text-foreground mb-1">Foto</label>
 
               <div className="flex items-center gap-3">
                 <input
