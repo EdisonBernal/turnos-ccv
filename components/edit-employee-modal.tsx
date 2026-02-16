@@ -3,6 +3,7 @@
 import type React from "react"
 
 import { useState } from "react"
+import { createClient } from "@/lib/supabase/client"
 import { updateEmployee, updateSchedule } from "@/app/actions/employee-actions"
 
 interface Personal {
@@ -43,6 +44,7 @@ export function EditEmployeeModal({ employee, horarios, areas, onUpdate, onClose
     foto_url: employee.foto_url || "",
     en_turno: employee.en_turno,
   })
+  const [uploading, setUploading] = useState(false)
 
   const [schedules, setSchedules] = useState<Horario[]>(
     DIAS.map((dia) => {
@@ -203,15 +205,77 @@ export function EditEmployeeModal({ employee, horarios, areas, onUpdate, onClose
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-foreground mb-1">URL Foto</label>
-              <input
-                type="url"
-                value={formData.foto_url}
-                onChange={(e) => setFormData({ ...formData, foto_url: e.target.value })}
-                className="w-full px-3 py-2 border border-border rounded-lg bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-                placeholder="https://..."
-              />
-              <p className="text-xs text-muted-foreground mt-1">Opcional — si ingresas una URL será verificada.</p>
+              <label className="block text-sm font-medium text-foreground mb-1">Foto (archivo o URL)</label>
+
+              <div className="flex items-center gap-3">
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={async (e) => {
+                    const file = e.target.files?.[0]
+                    if (!file) return
+                    try {
+                      setUploading(true)
+                      const supabase = createClient()
+                      const filePath = `employees/${employee.id}_${Date.now()}_${file.name}`
+                      const { error: uploadError } = await supabase.storage.from("avatars").upload(filePath, file, { upsert: true })
+                      if (uploadError) throw uploadError
+                      const { data: urlData } = supabase.storage.from("avatars").getPublicUrl(filePath)
+                      const publicUrl = urlData.publicUrl
+                      setFormData({ ...formData, foto_url: publicUrl })
+                    } catch (err: any) {
+                      console.error("Upload error:", err)
+                      alert("Error al subir la imagen: " + (err?.message || String(err)))
+                    } finally {
+                      setUploading(false)
+                    }
+                  }}
+                  className="px-3 py-2 border border-border rounded-lg bg-background text-foreground cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary"
+                />
+
+                {formData.foto_url && (
+                  <div className="w-20 h-20 rounded-full overflow-hidden relative">
+                    <img src={formData.foto_url} alt="preview" className="object-cover w-full h-full" />
+                  </div>
+                )}
+                {uploading && <div className="text-sm text-muted-foreground">Subiendo...</div>}
+              </div>
+
+              <div className="mt-2">
+                {formData.foto_url ? (
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        if (!confirm("¿Eliminar avatar? Esta acción intentará borrar el archivo del bucket.")) return
+                        try {
+                          setUploading(true)
+                          const supabase = createClient()
+                          const url = formData.foto_url
+                          const marker = "/avatars/"
+                          const idx = url.indexOf(marker)
+                          if (idx !== -1) {
+                            const path = decodeURIComponent(url.slice(idx + marker.length))
+                            const { error } = await supabase.storage.from("avatars").remove([path])
+                            if (error) throw error
+                          }
+                          setFormData({ ...formData, foto_url: "" })
+                        } catch (err: any) {
+                          console.error("Delete avatar error:", err)
+                          alert("No se pudo eliminar el avatar: " + (err?.message || String(err)))
+                        } finally {
+                          setUploading(false)
+                        }
+                      }}
+                      className="px-3 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 text-sm cursor-pointer"
+                    >
+                      Eliminar avatar
+                    </button>
+                  </div>
+                ) : (
+                  <div className="text-xs text-muted-foreground">Sin avatar</div>
+                )}
+              </div>
             </div>
 
             <div className="flex items-center gap-2">
