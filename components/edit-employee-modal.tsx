@@ -121,7 +121,7 @@ export function EditEmployeeModal({ employee, horarios, areas, onUpdate, onClose
 
   const setMorningDefault = (idx: number) => {
     const newSchedules = [...schedules]
-    newSchedules[idx].jornada_manana = "07:00-11:59"
+    newSchedules[idx].jornada_manana = "07:00-23:59"
     setSchedules(newSchedules)
   }
 
