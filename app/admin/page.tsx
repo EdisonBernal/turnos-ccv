@@ -1,6 +1,7 @@
 import Link from "next/link"
 import { ArrowLeft } from "lucide-react"
 import { createClient } from "@/lib/supabase/server"
+import { getAdminClient } from "@/lib/supabase/admin"
 import { AdminDashboard } from "@/components/admin-dashboard"
 import { AdminLogoutButton } from "@/components/admin-logout-button"
 import { redirect } from "next/navigation"
@@ -23,6 +24,10 @@ interface Horario {
   jornada_tarde?: string
 }
 
+interface AdminUsersRow {
+  area: string[] | null
+}
+
 export default async function AdminPage() {
   const supabase = await createClient()
   const {
@@ -35,10 +40,33 @@ export default async function AdminPage() {
 
   const adminNivel = (user.user_metadata?.nivel as number) || 1
 
-  const { data: personal = [] } = await supabase.from("personal").select("*").order("orden", { ascending: true })
+  // Obtener áreas del admin si es nivel 2
+  let adminAreas: string[] = []
+  if (adminNivel === 2) {
+    const adminClient = getAdminClient()
+    const { data: adminUserData } = await adminClient
+      .from("admin_users")
+      .select("area")
+      .eq("id", user.id)
+      .single<AdminUsersRow>()
+
+    adminAreas = adminUserData?.area || []
+  }
+
+  // Obtener personal
+  let personalQuery = supabase.from("personal").select("*").order("orden", { ascending: true })
+
+  // Si es admin nivel 2, filtrar por sus áreas
+  if (adminNivel === 2 && adminAreas.length > 0) {
+    personalQuery = personalQuery.in("area", adminAreas)
+  }
+
+  const { data: personal = [] } = await personalQuery
   const { data: horarios = [] } = await supabase.from("horarios").select("*")
 
-  const areas = Array.from(new Set((personal as Personal[]).map((p) => p.area)))
+  // Obtener áreas disponibles (todas si nivel 1, solo las del admin si nivel 2)
+  const allAreas = Array.from(new Set((personal as Personal[]).map((p) => p.area)))
+  const areas = adminNivel === 2 ? adminAreas : allAreas
 
   return (
     <div className="min-h-screen bg-background">
@@ -67,6 +95,7 @@ export default async function AdminPage() {
           horarios={horarios as Horario[]}
           areas={areas}
           adminNivel={adminNivel}
+          adminAreas={adminAreas}
         />
       </main>
     </div>

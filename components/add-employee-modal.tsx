@@ -7,15 +7,16 @@ import { addEmployee } from "@/app/actions/employee-actions"
 
 interface AddEmployeeModalProps {
   areas: string[]
+  adminNivel: number
   onAdd: (employee: any) => void
   onClose: () => void
 }
 
-export function AddEmployeeModal({ areas, onAdd, onClose }: AddEmployeeModalProps) {
+export function AddEmployeeModal({ areas, adminNivel, onAdd, onClose }: AddEmployeeModalProps) {
   const [loading, setLoading] = useState(false)
   const [formData, setFormData] = useState({
     nombre_completo: "",
-    area: areas[0] || "",
+    area: areas.length === 1 && adminNivel === 2 ? areas[0] : areas[0] || "",
     telefono: "",
     foto_url: "",
     en_turno: true,
@@ -60,20 +61,38 @@ export function AddEmployeeModal({ areas, onAdd, onClose }: AddEmployeeModalProp
 
           <div>
             <label className="block text-sm font-medium text-foreground mb-1">Área</label>
-            <input
-              type="text"
-              list="areas-list"
-              value={formData.area}
-              onChange={(e) => setFormData({ ...formData, area: e.target.value })}
-              placeholder="Selecciona o escribe una nueva área"
-              className="w-full px-3 py-2 border border-border rounded-lg bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-              required
-            />
-            <datalist id="areas-list">
-              {areas.map((area) => (
-                <option key={area} value={area} />
-              ))}
-            </datalist>
+            {adminNivel === 2 ? (
+              <select
+                value={formData.area}
+                onChange={(e) => setFormData({ ...formData, area: e.target.value })}
+                disabled={areas.length === 1}
+                className="w-full px-3 py-2 border border-border rounded-lg bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed"
+                required
+              >
+                {areas.map((area) => (
+                  <option key={area} value={area}>
+                    {area}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <>
+                <input
+                  type="text"
+                  list="areas-list"
+                  value={formData.area}
+                  onChange={(e) => setFormData({ ...formData, area: e.target.value })}
+                  placeholder="Selecciona o escribe una nueva área"
+                  className="w-full px-3 py-2 border border-border rounded-lg bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                  required
+                />
+                <datalist id="areas-list">
+                  {areas.map((area) => (
+                    <option key={area} value={area} />
+                  ))}
+                </datalist>
+              </>
+            )}
           </div>
 
           <div>

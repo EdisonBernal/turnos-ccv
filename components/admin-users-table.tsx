@@ -49,6 +49,7 @@ export function AdminUsersTable({ users, onEdit, onDelete, onAdd }: AdminUsersTa
                 <th className="text-left px-4 py-3 text-sm font-semibold text-foreground">Nombre</th>
                 <th className="text-left px-4 py-3 text-sm font-semibold text-foreground">Email</th>
                 <th className="text-left px-4 py-3 text-sm font-semibold text-foreground">Nivel</th>
+                <th className="text-left px-4 py-3 text-sm font-semibold text-foreground">Áreas</th>
                 <th className="text-left px-4 py-3 text-sm font-semibold text-foreground">Estado</th>
                 <th className="text-right px-4 py-3 text-sm font-semibold text-foreground">Acciones</th>
               </tr>
@@ -69,6 +70,26 @@ export function AdminUsersTable({ users, onEdit, onDelete, onAdd }: AdminUsersTa
                       {user.nivel === 1 ? <ShieldCheck className="w-3 h-3" /> : <Shield className="w-3 h-3" />}
                       Nivel {user.nivel}
                     </span>
+                  </td>
+                  <td className="px-4 py-3">
+                    {user.nivel === 1 ? (
+                      <span className="text-xs text-muted-foreground">Todas las áreas</span>
+                    ) : (
+                      <div className="flex flex-wrap gap-1">
+                        {user.area && user.area.length > 0 ? (
+                          user.area.map((area) => (
+                            <span
+                              key={area}
+                              className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800"
+                            >
+                              {area}
+                            </span>
+                          ))
+                        ) : (
+                          <span className="text-xs text-muted-foreground">Sin áreas</span>
+                        )}
+                      </div>
+                    )}
                   </td>
                   <td className="px-4 py-3">
                     <span
@@ -102,7 +123,7 @@ export function AdminUsersTable({ users, onEdit, onDelete, onAdd }: AdminUsersTa
               ))}
               {users.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="px-4 py-8 text-center text-muted-foreground">
+                  <td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">
                     No hay usuarios administradores registrados
                   </td>
                 </tr>

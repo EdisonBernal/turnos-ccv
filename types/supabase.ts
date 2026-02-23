@@ -57,6 +57,7 @@ export type Database = {
           nivel: number
           activo: boolean
           password_hash: string | null
+          area: string[] | null
           created_at: string
           updated_at: string
         }
@@ -66,6 +67,7 @@ export type Database = {
           nivel: number
           activo?: boolean
           password_hash?: string | null
+          area?: string[] | null
         }
         Update: {
           email?: string
@@ -73,6 +75,7 @@ export type Database = {
           nivel?: number
           activo?: boolean
           password_hash?: string | null
+          area?: string[] | null
         }
       }
     }

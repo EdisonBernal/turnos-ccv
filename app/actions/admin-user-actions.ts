@@ -9,6 +9,7 @@ export interface AdminUser {
   nombre: string
   nivel: number
   activo: boolean
+  area: string[]
   created_at: string
 }
 
@@ -27,7 +28,7 @@ export async function getAdminUsers(): Promise<{ success: boolean; users?: Admin
   // Obtener usuarios desde la tabla admin_users que tiene los niveles
   const { data, error } = await adminClient
     .from("admin_users")
-    .select("id, email, nombre, nivel, activo, created_at")
+    .select("id, email, nombre, nivel, activo, area, created_at")
     .order("created_at", { ascending: false })
 
   if (error) {
@@ -42,6 +43,7 @@ export async function addAdminUser(
   password: string,
   nombre: string,
   nivel: number,
+  area: string[] = [],
 ): Promise<{ success: boolean; user?: AdminUser; message?: string }> {
   const adminClient = getAdminClient()
 
@@ -52,6 +54,7 @@ export async function addAdminUser(
       user_metadata: {
         nombre,
         nivel,
+        area,
       },
       email_confirm: true, // Marcar email como confirmado
     })
@@ -68,8 +71,9 @@ export async function addAdminUser(
         nombre,
         nivel,
         activo: true,
+        area: nivel === 2 ? area : null,
       })
-      .select("id, email, nombre, nivel, activo, created_at")
+      .select("id, email, nombre, nivel, activo, area, created_at")
       .single()
 
     if (dbError) {
@@ -84,6 +88,7 @@ export async function addAdminUser(
         nombre,
         nivel,
         activo: true,
+        area: nivel === 2 ? area : [],
         created_at: authData.user.created_at || new Date().toISOString(),
       },
     }
@@ -99,6 +104,8 @@ export async function updateAdminUser(
   nombre: string,
   nivel: number,
   activo: boolean,
+  newPassword?: string,
+  area: string[] = [],
 ): Promise<{ success: boolean; user?: AdminUser; message?: string }> {
   const supabase = await createClient()
   const {
@@ -109,18 +116,21 @@ export async function updateAdminUser(
     return { success: false, message: "No autorizado" }
   }
 
-  const { data: authData, error: authError } = await supabase.auth.admin.updateUserById(id, {
+  const adminClient = getAdminClient()
+  
+  const { data: authData, error: authError } = await adminClient.auth.admin.updateUserById(id, {
     user_metadata: {
       nombre,
       nivel,
+      area,
     },
+    ...(newPassword && { password: newPassword }),
   })
 
   if (authError) {
     return { success: false, message: authError.message }
   }
 
-  const adminClient = getAdminClient()
   const { data: adminUserData, error: dbError } = await adminClient
     .from("admin_users")
     .update({
@@ -128,10 +138,11 @@ export async function updateAdminUser(
       nombre,
       nivel,
       activo,
+      area: nivel === 2 ? area : null,
       updated_at: new Date().toISOString(),
     })
     .eq("id", id)
-    .select("id, email, nombre, nivel, activo, created_at")
+    .select("id, email, nombre, nivel, activo, area, created_at")
     .single()
 
   if (dbError) {
@@ -146,6 +157,7 @@ export async function updateAdminUser(
       nombre,
       nivel,
       activo,
+      area: nivel === 2 ? area : [],
       created_at: authData.user.created_at || new Date().toISOString(),
     },
   }
@@ -168,6 +180,29 @@ export async function deleteAdminUser(id: string): Promise<{ success: boolean; m
     }
 
     return { success: true }
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : "Error desconocido"
+    return { success: false, message: errorMessage }
+  }
+}
+
+export async function getAdminUserAreas(
+  userId: string,
+): Promise<{ success: boolean; areas?: string[]; message?: string }> {
+  const adminClient = getAdminClient()
+
+  try {
+    const { data, error } = await adminClient
+      .from("admin_users")
+      .select("area")
+      .eq("id", userId)
+      .single()
+
+    if (error) {
+      return { success: false, message: error.message }
+    }
+
+    return { success: true, areas: data?.area || [] }
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : "Error desconocido"
     return { success: false, message: errorMessage }

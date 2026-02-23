@@ -28,13 +28,14 @@ interface EditEmployeeModalProps {
   employee: Personal
   horarios: Horario[]
   areas: string[]
+  adminNivel: number
   onUpdate: (employee: Personal) => void
   onClose: () => void
 }
 
 const DIAS = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"]
 
-export function EditEmployeeModal({ employee, horarios, areas, onUpdate, onClose }: EditEmployeeModalProps) {
+export function EditEmployeeModal({ employee, horarios, areas, adminNivel, onUpdate, onClose }: EditEmployeeModalProps) {
   const [loading, setLoading] = useState(false)
   const [tab, setTab] = useState<"info" | "horarios">("info")
   const [formData, setFormData] = useState({
@@ -176,7 +177,8 @@ export function EditEmployeeModal({ employee, horarios, areas, onUpdate, onClose
               <select
                 value={formData.area}
                 onChange={(e) => setFormData({ ...formData, area: e.target.value })}
-                className="w-full px-3 py-2 border border-border rounded-lg bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                disabled={adminNivel === 2 && areas.length === 1}
+                className="w-full px-3 py-2 border border-border rounded-lg bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {areas.map((area) => (
                   <option key={area} value={area}>

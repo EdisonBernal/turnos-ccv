@@ -7,15 +7,17 @@ import { X, Eye, EyeOff } from "lucide-react"
 import { addAdminUser, type AdminUser } from "@/app/actions/admin-user-actions"
 
 interface AddAdminUserModalProps {
+  allAreas: string[]
   onAdd: (user: AdminUser) => void
   onClose: () => void
 }
 
-export function AddAdminUserModal({ onAdd, onClose }: AddAdminUserModalProps) {
+export function AddAdminUserModal({ allAreas, onAdd, onClose }: AddAdminUserModalProps) {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [nombre, setNombre] = useState("")
   const [nivel, setNivel] = useState(2)
+  const [selectedAreas, setSelectedAreas] = useState<string[]>([])
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
@@ -37,7 +39,13 @@ export function AddAdminUserModal({ onAdd, onClose }: AddAdminUserModalProps) {
       return
     }
 
-    const result = await addAdminUser(email, password, nombre, nivel)
+    if (nivel === 2 && selectedAreas.length === 0) {
+      setError("Debe seleccionar al menos un área para admin nivel 2")
+      setLoading(false)
+      return
+    }
+
+    const result = await addAdminUser(email, password, nombre, nivel, selectedAreas)
 
     if (result.success && result.user) {
       onAdd(result.user)
@@ -110,13 +118,51 @@ export function AddAdminUserModal({ onAdd, onClose }: AddAdminUserModalProps) {
             <label className="block text-sm font-medium text-foreground mb-1">Nivel de acceso</label>
             <select
               value={nivel}
-              onChange={(e) => setNivel(Number(e.target.value))}
+              onChange={(e) => {
+                const newNivel = Number(e.target.value)
+                setNivel(newNivel)
+                if (newNivel === 1) {
+                  setSelectedAreas([])
+                }
+              }}
               className="w-full px-4 py-2 border border-border rounded-lg bg-background text-foreground focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
             >
               <option value={1}>Nivel 1 - Admin Principal (acceso total)</option>
               <option value={2}>Nivel 2 - Admin Operativo (solo empleados/horarios)</option>
             </select>
           </div>
+
+          {nivel === 2 && (
+            <div>
+              <label className="block text-sm font-medium text-foreground mb-3">Áreas asignadas</label>
+              <div className="space-y-2 max-h-48 overflow-y-auto border border-border rounded-lg p-3 bg-muted/30">
+                {allAreas.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">No hay áreas disponibles</p>
+                ) : (
+                  allAreas.map((area) => (
+                    <div key={area} className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        id={`area-${area}`}
+                        checked={selectedAreas.includes(area)}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setSelectedAreas([...selectedAreas, area])
+                          } else {
+                            setSelectedAreas(selectedAreas.filter((a) => a !== area))
+                          }
+                        }}
+                        className="w-4 h-4 rounded border-border text-primary focus:ring-primary"
+                      />
+                      <label htmlFor={`area-${area}`} className="text-sm text-foreground cursor-pointer">
+                        {area}
+                      </label>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          )}
 
           <div className="flex gap-3 pt-4">
             <button

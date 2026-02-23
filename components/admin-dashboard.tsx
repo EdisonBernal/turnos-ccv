@@ -33,11 +33,12 @@ interface AdminDashboardProps {
   horarios: Horario[]
   areas: string[]
   adminNivel: number
+  adminAreas: string[]
 }
 
 type TabType = "empleados" | "usuarios"
 
-export function AdminDashboard({ personal: initialPersonal, horarios, areas, adminNivel }: AdminDashboardProps) {
+export function AdminDashboard({ personal: initialPersonal, horarios, areas, adminNivel, adminAreas }: AdminDashboardProps) {
   const [personal, setPersonal] = useState<Personal[]>(initialPersonal)
   const [showAddModal, setShowAddModal] = useState(false)
   const [editingEmployee, setEditingEmployee] = useState<Personal | null>(null)
@@ -142,14 +143,20 @@ export function AdminDashboard({ personal: initialPersonal, horarios, areas, adm
           />
 
           {showAddModal && (
-            <AddEmployeeModal areas={areas} onAdd={handleAddEmployee} onClose={() => setShowAddModal(false)} />
+            <AddEmployeeModal 
+              areas={adminNivel === 2 ? adminAreas : areas} 
+              adminNivel={adminNivel}
+              onAdd={handleAddEmployee} 
+              onClose={() => setShowAddModal(false)} 
+            />
           )}
 
           {editingEmployee && (
             <EditEmployeeModal
               employee={editingEmployee}
               horarios={horarios.filter((h) => h.personal_id === editingEmployee.id)}
-              areas={areas}
+              areas={adminNivel === 2 ? adminAreas : areas}
+              adminNivel={adminNivel}
               onUpdate={handleUpdateEmployee}
               onClose={() => setEditingEmployee(null)}
             />
@@ -171,12 +178,17 @@ export function AdminDashboard({ personal: initialPersonal, horarios, areas, adm
           )}
 
           {showAddAdminModal && (
-            <AddAdminUserModal onAdd={handleAddAdminUser} onClose={() => setShowAddAdminModal(false)} />
+            <AddAdminUserModal 
+              allAreas={areas} 
+              onAdd={handleAddAdminUser} 
+              onClose={() => setShowAddAdminModal(false)} 
+            />
           )}
 
           {editingAdminUser && (
             <EditAdminUserModal
               user={editingAdminUser}
+              allAreas={areas}
               onUpdate={handleUpdateAdminUser}
               onClose={() => setEditingAdminUser(null)}
             />
