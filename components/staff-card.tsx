@@ -9,6 +9,12 @@ interface Horario {
   jornada_tarde?: string
 }
 
+interface HorarioMensual {
+  fecha: string
+  jornada_manana?: string
+  jornada_tarde?: string
+}
+
 interface StaffCardProps {
   id: string
   nombre_completo: string
@@ -18,9 +24,62 @@ interface StaffCardProps {
   en_turno: boolean
   statusReason?: string
   horarios: Horario[]
+  horariosMensual?: HorarioMensual[]
 }
 
 const DIAS_ORDEN = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"]
+
+const DIAS_ESPANOL = ["domingo", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado"]
+
+/**
+ * Get this week's schedule from monthly schedules
+ * Combines monthly schedules with weekly schedules for display
+ */
+function getWeeklyScheduleFromMonthly(
+  horariosMensual: HorarioMensual[] | undefined,
+  horariosSemanales: Horario[],
+): Horario[] {
+  if (!horariosMensual || horariosMensual.length === 0) {
+    return horariosSemanales
+  }
+
+  // Get current date and start of week (Monday)
+  const today = new Date()
+  const currentDayOfWeek = today.getDay() // 0 = Sunday, 1 = Monday, etc.
+  
+  // Calculate Monday of current week
+  const daysUntilMonday = currentDayOfWeek === 0 ? 6 : currentDayOfWeek - 1
+  const mondayDate = new Date(today)
+  mondayDate.setDate(today.getDate() - daysUntilMonday)
+  mondayDate.setHours(0, 0, 0, 0)
+
+  // Map of DIAS_ORDEN to date offset from Monday
+  const dayOffsets = { "Lunes": 0, "Martes": 1, "Miércoles": 2, "Jueves": 3, "Viernes": 4, "Sábado": 5, "Domingo": 6 }
+
+  // Create combined schedule for this week from monthly schedules
+  const weekSchedule: Horario[] = DIAS_ORDEN.map((dia) => {
+    const offset = dayOffsets[dia as keyof typeof dayOffsets] || 0
+    const dateForDay = new Date(mondayDate)
+    dateForDay.setDate(mondayDate.getDate() + offset)
+    const dateISO = dateForDay.toISOString().split("T")[0]
+
+    // Look for this date in monthly schedules
+    const monthlyScheduleForDay = horariosMensual.find((h) => h.fecha === dateISO)
+
+    if (monthlyScheduleForDay && (monthlyScheduleForDay.jornada_manana || monthlyScheduleForDay.jornada_tarde)) {
+      return {
+        dia,
+        jornada_manana: monthlyScheduleForDay.jornada_manana,
+        jornada_tarde: monthlyScheduleForDay.jornada_tarde,
+      }
+    }
+
+    // Fallback to weekly schedule
+    return horariosSemanales.find((h) => h.dia === dia) || { dia }
+  })
+
+  return weekSchedule
+}
 
 const getInitials = (fullName: string) => {
   const parts = fullName.trim().split(/\s+/)
@@ -54,12 +113,23 @@ export function StaffCard({
   en_turno,
   statusReason,
   horarios,
+  horariosMensual,
 }: StaffCardProps) {
-  const sortedHorarios = horarios.sort((a, b) => {
-    return DIAS_ORDEN.indexOf(a.dia) - DIAS_ORDEN.indexOf(b.dia)
-  })
+  // Get this week's schedule, combining monthly and weekly schedules
+  const weeklyScheduleDisplay = getWeeklyScheduleFromMonthly(horariosMensual, horarios)
 
-  const horariosConValores = sortedHorarios.filter((h) => h.jornada_manana || h.jornada_tarde)
+  // Create a map of horarios for quick lookup
+  const horariosMap = new Map(weeklyScheduleDisplay.map((h) => [h.dia, h]))
+
+  // Always show all weekdays in order, with or without schedules
+  const allDaysSchedules = DIAS_ORDEN.map((dia) => {
+    const horario = horariosMap.get(dia)
+    return {
+      dia,
+      jornada_manana: horario?.jornada_manana,
+      jornada_tarde: horario?.jornada_tarde,
+    }
+  })
 
   const firstName = nombre_completo.split(" ")[0]
   const firstNameCapitalized = firstName.charAt(0).toUpperCase() + firstName.slice(1).toLowerCase()  
@@ -115,7 +185,7 @@ export function StaffCard({
             </tr>
           </thead>
           <tbody>
-            {horariosConValores.map((h) => (
+            {allDaysSchedules.map((h) => (
               <tr key={h.dia} className="border-b border-border/50">
                 <td className="py-2 px-2 text-foreground">{h.dia}</td>
                 <td className="py-2 px-2 text-muted-foreground">{h.jornada_manana || "—"}</td>

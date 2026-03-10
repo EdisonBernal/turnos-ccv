@@ -4,6 +4,12 @@ interface Horario {
   jornada_tarde?: string
 }
 
+interface HorarioMensual {
+  fecha: string // YYYY-MM-DD
+  jornada_manana?: string
+  jornada_tarde?: string
+}
+
 const DIAS_ESPANOL = ["domingo", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado"]
 
 /**
@@ -30,11 +36,43 @@ function formatTime(date: Date): string {
 }
 
 /**
+ * Get today's schedule from monthly or weekly schedules
+ * Prioritizes monthly schedules over weekly schedules
+ */
+function getTodaySchedule(horariosMensual: HorarioMensual[], horariosSemanales: Horario[], fecha: Date): { jornada_manana?: string; jornada_tarde?: string } | null {
+  // First, check monthly schedules
+  const fechaISO = fecha.toISOString().split("T")[0]
+  const monthlySchedule = horariosMensual.find((h) => h.fecha === fechaISO)
+  
+  if (monthlySchedule && (monthlySchedule.jornada_manana || monthlySchedule.jornada_tarde)) {
+    return monthlySchedule
+  }
+
+  // Fallback to weekly schedules
+  const dayIndex = fecha.getDay()
+  const dayName = DIAS_ESPANOL[dayIndex]
+  const weeklySchedule = horariosSemanales.find((h) => h.dia.toLowerCase() === dayName)
+  
+  if (weeklySchedule && (weeklySchedule.jornada_manana || weeklySchedule.jornada_tarde)) {
+    return weeklySchedule
+  }
+
+  return null
+}
+
+/**
  * Validates if an employee should be shown as "en turno" (on duty)
  * Combines manual flag with actual schedule validation
  * Uses Colombia timezone (GMT-5): Bogotá, Lima, Quito
+ * @param enTurnoFlag - Manual flag
+ * @param horarios - Weekly schedules (fallback)
+ * @param horariosMensual - Monthly schedules (priority) - optional
  */
-export function isEmployeeOnDuty(enTurnoFlag: boolean, horarios: Horario[]): { isOnDuty: boolean; reason: string } {
+export function isEmployeeOnDuty(
+  enTurnoFlag: boolean,
+  horarios: Horario[],
+  horariosMensual: HorarioMensual[] = [],
+): { isOnDuty: boolean; reason: string } {
   // If manually marked as out of duty, always show as out of duty
   if (!enTurnoFlag) {
     return { isOnDuty: false, reason: "Marcado manualmente como fuera de turno" }
@@ -43,14 +81,10 @@ export function isEmployeeOnDuty(enTurnoFlag: boolean, horarios: Horario[]): { i
   // Get current time in Colombia timezone (GMT-5)
   const colombiaTime = getColombiaTime()
 
-  // Get current day in Spanish
-  const dayIndex = colombiaTime.getDay() // 0 = Sunday, 1 = Monday, etc.
-  const currentDay = DIAS_ESPANOL[dayIndex]  
+  // Get today's schedule (prioritizes monthly over weekly)
+  const todaySchedule = getTodaySchedule(horariosMensual, horarios, colombiaTime)
 
-  // Find schedule for today
-  const todaySchedule = horarios.find((h) => h.dia.toLowerCase() === currentDay)
-
-  if (!todaySchedule || (!todaySchedule.jornada_manana && !todaySchedule.jornada_tarde)) {
+  if (!todaySchedule) {
     return { isOnDuty: false, reason: "Sin horario configurado para hoy" }
   }
 
@@ -100,17 +134,59 @@ function isTimeInRange(currentTime: string, startTime: string | undefined, endTi
 }
 
 /**
+ * Get schedule for a specific date, with fallback to weekly schedule
+ * First checks horarios_mensual for specific date, then falls back to horarios by weekday
+ */
+export function getScheduleForDate(
+  fecha: Date,
+  horariosMensual: HorarioMensual[],
+  horariosSemanales: Horario[],
+): { jornada_manana?: string; jornada_tarde?: string; isSpecific: boolean } {
+  // Format fecha to YYYY-MM-DD
+  const fechaISO = fecha.toISOString().split("T")[0]
+
+  // Check if there's a specific schedule for this date
+  const specificSchedule = horariosMensual.find((h) => h.fecha === fechaISO)
+  if (specificSchedule) {
+    return {
+      jornada_manana: specificSchedule.jornada_manana,
+      jornada_tarde: specificSchedule.jornada_tarde,
+      isSpecific: true,
+    }
+  }
+
+  // Fallback to weekly schedule
+  const dayIndex = fecha.getDay() // 0 = Sunday, 1 = Monday, etc.
+  const dayName = DIAS_ESPANOL[dayIndex]
+  const weeklySchedule = horariosSemanales.find((h) => h.dia.toLowerCase() === dayName)
+
+  if (weeklySchedule) {
+    return {
+      jornada_manana: weeklySchedule.jornada_manana,
+      jornada_tarde: weeklySchedule.jornada_tarde,
+      isSpecific: false,
+    }
+  }
+
+  return { isSpecific: false }
+}
+
+/**
  * Get display status for employee
+ * @param enTurnoFlag - Manual flag
+ * @param horarios - Weekly schedules (fallback)
+ * @param horariosMensual - Monthly schedules (priority) - optional
  */
 export function getEmployeeStatus(
   enTurnoFlag: boolean,
   horarios: Horario[],
+  horariosMensual: HorarioMensual[] = [],
 ): {
   status: "en_turno" | "fuera_turno"
   statusText: string
   reason: string
 } {
-  const validation = isEmployeeOnDuty(enTurnoFlag, horarios)
+  const validation = isEmployeeOnDuty(enTurnoFlag, horarios, horariosMensual)
 
   return {
     status: validation.isOnDuty ? "en_turno" : "fuera_turno",

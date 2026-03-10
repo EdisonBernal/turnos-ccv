@@ -13,6 +13,14 @@ interface Horario {
   jornada_tarde?: string
 }
 
+interface HorarioMensual {
+  id: string
+  personal_id: string
+  fecha: string
+  jornada_manana?: string
+  jornada_tarde?: string
+}
+
 interface Personal {
   id: string
   nombre_completo: string
@@ -26,10 +34,11 @@ interface Personal {
 interface StaffListProps {
   personal: Personal[]
   horarios: Horario[]
+  horariosMensual: HorarioMensual[]
   areas: string[]
 }
 
-export function StaffList({ personal, horarios, areas }: StaffListProps) {
+export function StaffList({ personal, horarios, horariosMensual, areas }: StaffListProps) {
   const [filters, setFilters] = useState({
     search: "",
     area: "",
@@ -48,10 +57,23 @@ export function StaffList({ personal, horarios, areas }: StaffListProps) {
     return map
   }, [horarios])
 
+  // Group horariosMensual by personal_id
+  const horariosMensualMap = useMemo(() => {
+    const map = new Map<string, HorarioMensual[]>()
+    horariosMensual.forEach((h) => {
+      if (!map.has(h.personal_id)) {
+        map.set(h.personal_id, [])
+      }
+      map.get(h.personal_id)!.push(h)
+    })
+    return map
+  }, [horariosMensual])
+
   const personalWithValidation = useMemo(() => {
     return personal.map((person) => {
       const personHorarios = horariosMap.get(person.id) || []
-      const { status, statusText, reason } = getEmployeeStatus(person.en_turno, personHorarios)
+      const personHorariosMensual = horariosMensualMap.get(person.id) || []
+      const { status, statusText, reason } = getEmployeeStatus(person.en_turno, personHorarios, personHorariosMensual)
       return {
         ...person,
         actualEnTurno: status === "en_turno",
@@ -59,7 +81,7 @@ export function StaffList({ personal, horarios, areas }: StaffListProps) {
         statusReason: reason,
       }
     })
-  }, [personal, horariosMap])
+  }, [personal, horariosMap, horariosMensualMap])
 
   // Apply filters using validated status
   const filteredPersonal = useMemo(() => {
@@ -114,6 +136,7 @@ export function StaffList({ personal, horarios, areas }: StaffListProps) {
                 en_turno={person.actualEnTurno}
                 statusReason={person.statusReason}
                 horarios={horariosMap.get(person.id) || []}
+                horariosMensual={horariosMensualMap.get(person.id) || []}
               />
             ))}
           </div>
@@ -146,6 +169,7 @@ export function StaffList({ personal, horarios, areas }: StaffListProps) {
                 en_turno={person.actualEnTurno}
                 statusReason={person.statusReason}
                 horarios={horariosMap.get(person.id) || []}
+                horariosMensual={horariosMensualMap.get(person.id) || []}
               />
             ))}
           </div>

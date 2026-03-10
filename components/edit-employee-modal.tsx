@@ -4,7 +4,17 @@ import type React from "react"
 
 import { useState } from "react"
 import { createClient } from "@/lib/supabase/client"
-import { updateEmployee, updateSchedule } from "@/app/actions/employee-actions"
+import {
+  updateEmployee,
+  updateSchedule,
+  getMonthlySchedules,
+  updateWeeklySchedules,
+  copyWeekToWeek,
+  deleteMonthlySchedule,
+  updateMonthlySchedule,
+} from "@/app/actions/employee-actions"
+import { MonthlyCalendar } from "@/components/monthly-calendar"
+import { WeekScheduleEditor } from "@/components/week-schedule-editor"
 
 interface Personal {
   id: string
@@ -24,6 +34,12 @@ interface Horario {
   jornada_tarde?: string
 }
 
+interface HorarioMensual {
+  fecha: string
+  jornada_manana?: string
+  jornada_tarde?: string
+}
+
 interface EditEmployeeModalProps {
   employee: Personal
   horarios: Horario[]
@@ -37,7 +53,7 @@ const DIAS = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "
 
 export function EditEmployeeModal({ employee, horarios, areas, adminNivel, onUpdate, onClose }: EditEmployeeModalProps) {
   const [loading, setLoading] = useState(false)
-  const [tab, setTab] = useState<"info" | "horarios">("info")
+  const [tab, setTab] = useState<"info" | "horarios" | "horarios-mensual">("info")
   const [formData, setFormData] = useState({
     nombre_completo: employee.nombre_completo,
     area: employee.area,
@@ -46,6 +62,23 @@ export function EditEmployeeModal({ employee, horarios, areas, adminNivel, onUpd
     en_turno: employee.en_turno,
   })
   const [uploading, setUploading] = useState(false)
+
+  // Monthly schedules state
+  const [monthlySchedules, setMonthlySchedules] = useState<HorarioMensual[]>([])
+  const [selectedMonth, setSelectedMonth] = useState(() => {
+    const now = new Date()
+    return now.getMonth() + 1 // 1-12
+  })
+  const [selectedYear, setSelectedYear] = useState(() => new Date().getFullYear())
+  const [selectedWeek, setSelectedWeek] = useState<number | null>(null)
+  const [monthlyLoading, setMonthlyLoading] = useState(false)
+  // calendar day edit state
+  const [selectedDate, setSelectedDate] = useState<string>("")
+  // split ranges into start/end
+  const [selectedMorningStart, setSelectedMorningStart] = useState<string>("")
+  const [selectedMorningEnd, setSelectedMorningEnd] = useState<string>("")
+  const [selectedAfternoonStart, setSelectedAfternoonStart] = useState<string>("")
+  const [selectedAfternoonEnd, setSelectedAfternoonEnd] = useState<string>("")
 
   const [schedules, setSchedules] = useState<Horario[]>(
     DIAS.map((dia) => {
@@ -72,6 +105,19 @@ export function EditEmployeeModal({ employee, horarios, areas, adminNivel, onUpd
       return copy
     })
     setSchedules(newSchedules)
+  }
+
+  // Load monthly schedules when month/year changes or tab is switched
+  const loadMonthlySchedules = async () => {
+    setMonthlyLoading(true)
+    try {
+      const result = await getMonthlySchedules(employee.id, selectedMonth, selectedYear)
+      if (result.success) {
+        setMonthlySchedules(result.schedules as HorarioMensual[])
+      }
+    } finally {
+      setMonthlyLoading(false)
+    }
   }
 
   const handleInfoSubmit = async (e: React.FormEvent) => {
@@ -128,7 +174,7 @@ export function EditEmployeeModal({ employee, horarios, areas, adminNivel, onUpd
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-card rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+      <div className="bg-card rounded-lg shadow-xl max-w-5xl w-full max-h-[90vh] overflow-y-auto">
         <div className="sticky top-0 bg-card border-b border-border px-6 py-4 flex justify-between items-center">
           <h2 className="text-xl font-bold text-foreground">Editar Empleado</h2>
           <button onClick={onClose} className="text-muted-foreground hover:text-foreground">
@@ -155,7 +201,20 @@ export function EditEmployeeModal({ employee, horarios, areas, adminNivel, onUpd
                 : "border-transparent text-muted-foreground hover:text-foreground"
             }`}
           >
-            Horarios
+            Horarios (Semanal)
+          </button>
+          <button
+            onClick={() => {
+              setTab("horarios-mensual")
+              loadMonthlySchedules()
+            }}
+            className={`flex-1 px-4 py-3 font-medium text-sm border-b-2 transition-colors ${
+              tab === "horarios-mensual"
+                ? "border-primary text-primary"
+                : "border-transparent text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            Horarios (Mensual)
           </button>
         </div>
 
@@ -523,6 +582,226 @@ export function EditEmployeeModal({ employee, horarios, areas, adminNivel, onUpd
                   className="flex-1 px-4 py-2.5 border border-border rounded-lg hover:bg-muted text-foreground font-medium transition-colors cursor-pointer"
                 >
                   Cancelar
+                </button>
+              </div>
+            </div>
+          </form>
+        )}
+
+        {tab === "horarios-mensual" && (
+          <form className="p-6 space-y-6 pb-24">
+            {/* Month/Year Selector */}
+            <div className="flex gap-4 items-end border border-border rounded-lg p-4 bg-background/50">
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-2">Mes</label>
+                <select
+                  value={selectedMonth}
+                  onChange={(e) => {
+                    setSelectedMonth(parseInt(e.target.value))
+                  }}
+                  className="px-3 py-2 border border-border rounded-lg bg-background text-foreground text-sm"
+                >
+                  {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((m) => (
+                    <option key={m} value={m}>
+                      {new Date(selectedYear, m - 1).toLocaleString("es-CO", { month: "long" })}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-2">Año</label>
+                <select
+                  value={selectedYear}
+                  onChange={(e) => {
+                    setSelectedYear(parseInt(e.target.value))
+                  }}
+                  className="px-3 py-2 border border-border rounded-lg bg-background text-foreground text-sm"
+                >
+                  {[2024, 2025, 2026, 2027, 2028].map((y) => (
+                    <option key={y} value={y}>
+                      {y}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {/* Week Editors */}
+            <div className="space-y-4">
+              <h3 className="text-base font-semibold text-foreground">Configurar por Semana</h3>
+              {[1, 2, 3, 4, 5].map((week) => {
+                const monthStart = new Date(selectedYear, selectedMonth - 1, 1)
+                const firstDay = monthStart.getDay()
+                const weekStartDate = 1 + (week - 1) * 7 - firstDay
+                const lastDayOfMonth = new Date(selectedYear, selectedMonth, 0).getDate()
+                const hasValidDays = weekStartDate <= lastDayOfMonth
+
+                if (!hasValidDays) return null
+
+                return (
+                  <WeekScheduleEditor
+                    key={week}
+                    numeroSemana={week}
+                    mes={selectedMonth}
+                    año={selectedYear}
+                    onApply={async (data) => {
+                      setMonthlyLoading(true)
+                      try {
+                        const result = await updateWeeklySchedules(employee.id, selectedMonth, selectedYear, week, data)
+                        if (result.success) {
+                          await loadMonthlySchedules()
+                        } else {
+                          alert("Error al aplicar: " + result.error)
+                        }
+                      } finally {
+                        setMonthlyLoading(false)
+                      }
+                    }}
+                    onCopyFromWeek={async (sourceWeek: number) => {
+                      setMonthlyLoading(true)
+                      try {
+                        const result = await copyWeekToWeek(
+                          employee.id,
+                          selectedMonth,
+                          selectedYear,
+                          sourceWeek,
+                          week,
+                        )
+                        if (result.success) {
+                          await loadMonthlySchedules()
+                        } else {
+                          alert("Error al copiar: " + result.error)
+                        }
+                      } finally {
+                        setMonthlyLoading(false)
+                      }
+                    }}
+                    isLoading={monthlyLoading}
+                    hasContent={false}
+                  />
+                )
+              })}
+            </div>
+
+            {/* Calendar View */}
+            <div className="border border-border rounded-lg p-4 bg-background/50">
+              <h3 className="text-base font-semibold text-foreground mb-4">Vista del Mes</h3>
+              {monthlyLoading ? (
+                <div className="text-center py-8 text-muted-foreground">Cargando...</div>
+              ) : (
+                <>
+                  {selectedDate && (
+                    <div className="mb-4 p-4 border border-border rounded-lg bg-background/50">
+                      <h4 className="text-sm font-semibold text-foreground mb-2">Editar horario para {selectedDate}</h4>
+                      <div className="grid grid-cols-4 gap-4">
+                        <div>
+                          <label className="block text-xs text-muted-foreground mb-1">Mañana inicio</label>
+                          <input
+                            type="time"
+                            value={selectedMorningStart}
+                            onChange={(e) => setSelectedMorningStart(e.target.value)}
+                            className="w-full px-3 py-2 border border-border rounded-lg bg-background text-foreground text-sm"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs text-muted-foreground mb-1">Mañana fin</label>
+                          <input
+                            type="time"
+                            value={selectedMorningEnd}
+                            onChange={(e) => setSelectedMorningEnd(e.target.value)}
+                            className="w-full px-3 py-2 border border-border rounded-lg bg-background text-foreground text-sm"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs text-muted-foreground mb-1">Tarde inicio</label>
+                          <input
+                            type="time"
+                            value={selectedAfternoonStart}
+                            onChange={(e) => setSelectedAfternoonStart(e.target.value)}
+                            className="w-full px-3 py-2 border border-border rounded-lg bg-background text-foreground text-sm"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs text-muted-foreground mb-1">Tarde fin</label>
+                          <input
+                            type="time"
+                            value={selectedAfternoonEnd}
+                            onChange={(e) => setSelectedAfternoonEnd(e.target.value)}
+                            className="w-full px-3 py-2 border border-border rounded-lg bg-background text-foreground text-sm"
+                          />
+                        </div>
+                      </div>
+                      <div className="mt-3 flex gap-2">
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            setMonthlyLoading(true)
+                            try {
+                              await updateMonthlySchedule(employee.id, selectedDate!, {
+                                jornada_manana: selectedMorningStart && selectedMorningEnd ? `${selectedMorningStart}-${selectedMorningEnd}` : null,
+                                jornada_tarde: selectedAfternoonStart && selectedAfternoonEnd ? `${selectedAfternoonStart}-${selectedAfternoonEnd}` : null,
+                              })
+                              await loadMonthlySchedules()
+                              setSelectedDate("")
+                            } finally {
+                              setMonthlyLoading(false)
+                            }
+                          }}
+                          className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 text-sm"
+                        >
+                          Guardar
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedDate("")
+                          }}
+                          className="px-4 py-2 border border-border rounded-lg hover:bg-muted text-sm"
+                        >
+                          Cancelar
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  <MonthlyCalendar
+                    mes={selectedMonth}
+                    año={selectedYear}
+                    schedules={monthlySchedules}
+                    onDayClick={(fecha) => {
+                      const schedule = monthlySchedules.find((s) => s.fecha === fecha)
+                      setSelectedDate(fecha)
+                      // split ranges into start/end
+                      if (schedule?.jornada_manana) {
+                        const [start, end] = schedule.jornada_manana.split("-")
+                        setSelectedMorningStart(start)
+                        setSelectedMorningEnd(end)
+                      } else {
+                        setSelectedMorningStart("")
+                        setSelectedMorningEnd("")
+                      }
+                      if (schedule?.jornada_tarde) {
+                        const [start, end] = schedule.jornada_tarde.split("-")
+                        setSelectedAfternoonStart(start)
+                        setSelectedAfternoonEnd(end)
+                      } else {
+                        setSelectedAfternoonStart("")
+                        setSelectedAfternoonEnd("")
+                      }
+                    }}
+                  />
+                </>
+              )}
+            </div>
+
+            <div className="fixed bottom-0 left-0 right-0 bg-card border-t border-border p-4 flex gap-3 shadow-lg">
+              <div className="max-w-4xl w-full mx-auto flex gap-3">
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="flex-1 px-4 py-2.5 border border-border rounded-lg hover:bg-muted text-foreground font-medium transition-colors cursor-pointer"
+                >
+                  Cerrar
                 </button>
               </div>
             </div>

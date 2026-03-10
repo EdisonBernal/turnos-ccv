@@ -26,13 +26,23 @@ interface Horario {
   jornada_tarde?: string
 }
 
+interface HorarioMensual {
+  id: string
+  personal_id: string
+  fecha: string
+  jornada_manana?: string
+  jornada_tarde?: string
+}
+
 export function ClientHome({
   personal,
   horarios,
+  horariosMensual,
   areas,
 }: {
   personal: Personal[]
   horarios: Horario[]
+  horariosMensual: HorarioMensual[]
   areas: string[]
 }) {
   const horariosMap = useMemo(() => {
@@ -46,13 +56,25 @@ export function ClientHome({
     return map
   }, [horarios])
 
+  const horariosMensualMap = useMemo(() => {
+    const map = new Map<string, HorarioMensual[]>()
+    horariosMensual.forEach((h) => {
+      if (!map.has(h.personal_id)) {
+        map.set(h.personal_id, [])
+      }
+      map.get(h.personal_id)!.push(h)
+    })
+    return map
+  }, [horariosMensual])
+
   const staffInShift = useMemo(() => {
     return personal.filter((person) => {
       const personHorarios = horariosMap.get(person.id) || []
-      const { status } = getEmployeeStatus(person.en_turno, personHorarios)
+      const personHorariosMensual = horariosMensualMap.get(person.id) || []
+      const { status } = getEmployeeStatus(person.en_turno, personHorarios, personHorariosMensual)
       return status === "en_turno"
     })
-  }, [personal, horariosMap])
+  }, [personal, horariosMap, horariosMensualMap])
 
   return (
     <div className="min-h-screen bg-linear-to-b from-background via-background to-muted/30">
@@ -134,7 +156,7 @@ export function ClientHome({
 
       {/* Main Content */}
       <main className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-12">
-        <StaffList personal={personal} horarios={horarios} areas={areas} />
+        <StaffList personal={personal} horarios={horarios} horariosMensual={horariosMensual} areas={areas} />
       </main>
 
       <footer className="border-t border-border/40 bg-card/30 backdrop-blur-sm mt-20">
