@@ -693,7 +693,7 @@ export function EditEmployeeModal({ employee, horarios, areas, adminNivel, onUpd
                   {selectedDate && (
                     <div className="mb-4 p-4 border border-border rounded-lg bg-background/50">
                       <h4 className="text-sm font-semibold text-foreground mb-2">Editar horario para {selectedDate}</h4>
-                      <div className="grid grid-cols-4 gap-4">
+                      <div className="grid grid-cols-2 gap-4">
                         <div>
                           <label className="block text-xs text-muted-foreground mb-1">Mañana inicio</label>
                           <input
