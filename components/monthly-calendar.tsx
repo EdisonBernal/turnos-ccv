@@ -1,6 +1,8 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import { useAppTour } from "@/hooks/useAppTour"
+import { monthlyScheduleTourSteps, MONTHLY_SCHEDULE_TOUR_ID } from "@/lib/monthly-schedule-tour"
 
 interface MonthlySchedule {
   fecha: string
@@ -13,6 +15,7 @@ interface MonthlyCalendarProps {
   año: number
   schedules: MonthlySchedule[]
   onDayClick: (fecha: string) => void
+  onTourInitialized?: (startTour: () => void, isMounted: boolean) => void
 }
 
 const DIAS_SEMANA = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"]
@@ -21,11 +24,43 @@ const MESES = [
   "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"
 ]
 
-export function MonthlyCalendar({ mes, año, schedules, onDayClick }: MonthlyCalendarProps) {
+export function MonthlyCalendar({ mes, año, schedules, onDayClick, onTourInitialized }: MonthlyCalendarProps) {
   // Get first day of month (0 = Sunday, 1 = Monday, etc.)
   const monthStart = new Date(año, mes - 1, 1)
   const firstDay = monthStart.getDay()
   const daysInMonth = new Date(año, mes, 0).getDate()
+
+  // Inicializar el hook del tour guiado
+  const { startTour, isMounted } = useAppTour({
+    steps: monthlyScheduleTourSteps,
+    tourId: MONTHLY_SCHEDULE_TOUR_ID,
+    onOpenDayModal: onDayClick,
+  })
+
+  // Notificar al padre cuando el tour está listo
+  useEffect(() => {
+    if (onTourInitialized && isMounted) {
+      onTourInitialized(startTour, isMounted)
+    }
+  }, [isMounted, startTour, onTourInitialized])
+
+  // Auto-trigger del tour solo una vez en la primera carga (si no ha sido completado)
+  useEffect(() => {
+    if (!isMounted) return
+
+    const tourKey = `app_tour_${MONTHLY_SCHEDULE_TOUR_ID}_completed`
+    const tourCompleted = localStorage.getItem(tourKey)
+
+    // Mostrar el tour automáticamente solo si no ha sido completado antes
+    if (!tourCompleted) {
+      // Pequeño delay para asegurar que el DOM está listo
+      const timer = setTimeout(() => {
+        startTour()
+      }, 500)
+
+      return () => clearTimeout(timer)
+    }
+  }, [isMounted, startTour])
 
   // Create array of days
   const calendarDays: (number | null)[] = []
@@ -61,7 +96,7 @@ export function MonthlyCalendar({ mes, año, schedules, onDayClick }: MonthlyCal
       </div>
 
       {/* Calendar grid */}
-      <div className="border border-border rounded-lg overflow-hidden bg-background">
+      <div id="tour-calendar-grid" className="border border-border rounded-lg overflow-hidden bg-background">
         {/* Day headers */}
         <div className="grid grid-cols-7 gap-0 bg-muted">
           {DIAS_SEMANA.map((dia) => (
@@ -83,12 +118,13 @@ export function MonthlyCalendar({ mes, año, schedules, onDayClick }: MonthlyCal
                 } ${hasSchedule(day || 0) ? "bg-emerald-50 dark:bg-emerald-950/30" : ""}`}
               >
                 {day && (
-                  <div className="text-sm">
+                  <div id="tour-day-with-schedule" data-fecha={new Date(año, mes - 1, day).toISOString().split("T")[0]} className="text-sm">
                     <div className="font-semibold text-foreground mb-1">{day}</div>
                     {getScheduleForDay(day) && (
                       <div className="space-y-1 text-xs">
                         {getScheduleForDay(day)?.jornada_manana && (
                           <div 
+                            id="tour-schedule-morning"
                             title={getScheduleForDay(day)!.jornada_manana}
                             className="bg-blue-100 dark:bg-blue-900/40 text-blue-800 dark:text-blue-200 px-2 py-1 rounded truncate cursor-help"
                           >
@@ -97,6 +133,7 @@ export function MonthlyCalendar({ mes, año, schedules, onDayClick }: MonthlyCal
                         )}
                         {getScheduleForDay(day)?.jornada_tarde && (
                           <div 
+                            id="tour-schedule-afternoon"
                             title={getScheduleForDay(day)!.jornada_tarde}
                             className="bg-orange-100 dark:bg-orange-900/40 text-orange-800 dark:text-orange-200 px-2 py-1 rounded truncate cursor-help"
                           >
@@ -114,7 +151,7 @@ export function MonthlyCalendar({ mes, año, schedules, onDayClick }: MonthlyCal
       </div>
 
       {/* Legend */}
-      <div className="flex gap-4 text-xs text-muted-foreground">
+      <div id="tour-calendar-legend" className="flex gap-4 text-xs text-muted-foreground">
         <div className="flex items-center gap-2">
           <div className="w-3 h-3 bg-blue-100 dark:bg-blue-900/40 rounded"></div>
           <span>Mañana</span>

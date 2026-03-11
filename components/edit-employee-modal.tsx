@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useState, useCallback } from "react"
 import { createClient } from "@/lib/supabase/client"
 import {
   updateEmployee,
@@ -72,6 +72,9 @@ export function EditEmployeeModal({ employee, horarios, areas, adminNivel, onUpd
   const [selectedYear, setSelectedYear] = useState(() => new Date().getFullYear())
   const [selectedWeek, setSelectedWeek] = useState<number | null>(null)
   const [monthlyLoading, setMonthlyLoading] = useState(false)
+  // Tour state
+  const [tourStartFunction, setTourStartFunction] = useState<(() => void) | null>(null)
+  const [tourIsMounted, setTourIsMounted] = useState(false)
   // calendar day edit state
   const [selectedDate, setSelectedDate] = useState<string>("")
   // split ranges into start/end
@@ -106,6 +109,29 @@ export function EditEmployeeModal({ employee, horarios, areas, adminNivel, onUpd
     })
     setSchedules(newSchedules)
   }
+
+  // Manejar clic en un día del calendario para abrir el editor
+  const handleDayClick = useCallback((fecha: string) => {
+    const schedule = monthlySchedules.find((s) => s.fecha === fecha)
+    setSelectedDate(fecha)
+    // split ranges into start/end
+    if (schedule?.jornada_manana) {
+      const [start, end] = schedule.jornada_manana.split("-")
+      setSelectedMorningStart(start)
+      setSelectedMorningEnd(end)
+    } else {
+      setSelectedMorningStart("")
+      setSelectedMorningEnd("")
+    }
+    if (schedule?.jornada_tarde) {
+      const [start, end] = schedule.jornada_tarde.split("-")
+      setSelectedAfternoonStart(start)
+      setSelectedAfternoonEnd(end)
+    } else {
+      setSelectedAfternoonStart("")
+      setSelectedAfternoonEnd("")
+    }
+  }, [monthlySchedules])
 
   // Load monthly schedules when month/year changes or tab is switched
   const loadMonthlySchedules = async () => {
@@ -204,6 +230,7 @@ export function EditEmployeeModal({ employee, horarios, areas, adminNivel, onUpd
             Horarios (Semanal)
           </button>
           <button
+            id="tour-horarios-mensual"
             onClick={() => {
               setTab("horarios-mensual")
               loadMonthlySchedules()
@@ -588,13 +615,24 @@ export function EditEmployeeModal({ employee, horarios, areas, adminNivel, onUpd
           </form>
         )}
 
-        {tab === "horarios-mensual" && (
+        {tab === "horarios-mensual" && (          
           <form className="p-6 space-y-6 pb-24">
+            {tourIsMounted && tourStartFunction && (
+            <button
+              type="button"
+              onClick={tourStartFunction}
+              className="px-3 py-1.5 border border-border rounded-lg hover:bg-muted text-xs font-medium gap-2 flex items-center"
+            >
+              <span>👁️</span>
+              Ver tour
+            </button>
+          )}
             {/* Month/Year Selector */}
-            <div className="flex gap-4 items-end border border-border rounded-lg p-4 bg-background/50">
+            <div id="tour-month-year-selector" className="flex gap-4 items-end border border-border rounded-lg p-4 bg-background/50">
               <div>
                 <label className="block text-sm font-medium text-foreground mb-2">Mes</label>
                 <select
+                  id="tour-month-select"
                   value={selectedMonth}
                   onChange={(e) => {
                     setSelectedMonth(parseInt(e.target.value))
@@ -611,6 +649,7 @@ export function EditEmployeeModal({ employee, horarios, areas, adminNivel, onUpd
               <div>
                 <label className="block text-sm font-medium text-foreground mb-2">Año</label>
                 <select
+                  id="tour-year-select"
                   value={selectedYear}
                   onChange={(e) => {
                     setSelectedYear(parseInt(e.target.value))
@@ -627,7 +666,7 @@ export function EditEmployeeModal({ employee, horarios, areas, adminNivel, onUpd
             </div>
 
             {/* Week Editors */}
-            <div className="space-y-4">
+            <div id="tour-week-config" className="space-y-4">
               <h3 className="text-base font-semibold text-foreground">Configurar por Semana</h3>
               {[1, 2, 3, 4, 5].map((week) => {
                 const monthStart = new Date(selectedYear, selectedMonth - 1, 1)
@@ -684,19 +723,22 @@ export function EditEmployeeModal({ employee, horarios, areas, adminNivel, onUpd
             </div>
 
             {/* Calendar View */}
-            <div className="border border-border rounded-lg p-4 bg-background/50">
-              <h3 className="text-base font-semibold text-foreground mb-4">Vista del Mes</h3>
+            <div id="tour-calendar-view" className="border border-border rounded-lg p-4 bg-background/50">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-base font-semibold text-foreground">Vista del Mes</h3>                
+              </div>
               {monthlyLoading ? (
                 <div className="text-center py-8 text-muted-foreground">Cargando...</div>
               ) : (
                 <>
                   {selectedDate && (
-                    <div className="mb-4 p-4 border border-border rounded-lg bg-background/50">
+                    <div id="tour-edit-day-section" className="mb-4 p-4 border border-border rounded-lg bg-background/50">
                       <h4 className="text-sm font-semibold text-foreground mb-2">Editar horario para {selectedDate}</h4>
                       <div className="grid grid-cols-2 gap-4">
                         <div>
                           <label className="block text-xs text-muted-foreground mb-1">Mañana inicio</label>
                           <input
+                            id="tour-morning-start"
                             type="time"
                             value={selectedMorningStart}
                             onChange={(e) => setSelectedMorningStart(e.target.value)}
@@ -706,6 +748,7 @@ export function EditEmployeeModal({ employee, horarios, areas, adminNivel, onUpd
                         <div>
                           <label className="block text-xs text-muted-foreground mb-1">Mañana fin</label>
                           <input
+                            id="tour-morning-end"
                             type="time"
                             value={selectedMorningEnd}
                             onChange={(e) => setSelectedMorningEnd(e.target.value)}
@@ -715,6 +758,7 @@ export function EditEmployeeModal({ employee, horarios, areas, adminNivel, onUpd
                         <div>
                           <label className="block text-xs text-muted-foreground mb-1">Tarde inicio</label>
                           <input
+                            id="tour-afternoon-start"
                             type="time"
                             value={selectedAfternoonStart}
                             onChange={(e) => setSelectedAfternoonStart(e.target.value)}
@@ -724,6 +768,7 @@ export function EditEmployeeModal({ employee, horarios, areas, adminNivel, onUpd
                         <div>
                           <label className="block text-xs text-muted-foreground mb-1">Tarde fin</label>
                           <input
+                            id="tour-afternoon-end"
                             type="time"
                             value={selectedAfternoonEnd}
                             onChange={(e) => setSelectedAfternoonEnd(e.target.value)}
@@ -768,26 +813,10 @@ export function EditEmployeeModal({ employee, horarios, areas, adminNivel, onUpd
                     mes={selectedMonth}
                     año={selectedYear}
                     schedules={monthlySchedules}
-                    onDayClick={(fecha) => {
-                      const schedule = monthlySchedules.find((s) => s.fecha === fecha)
-                      setSelectedDate(fecha)
-                      // split ranges into start/end
-                      if (schedule?.jornada_manana) {
-                        const [start, end] = schedule.jornada_manana.split("-")
-                        setSelectedMorningStart(start)
-                        setSelectedMorningEnd(end)
-                      } else {
-                        setSelectedMorningStart("")
-                        setSelectedMorningEnd("")
-                      }
-                      if (schedule?.jornada_tarde) {
-                        const [start, end] = schedule.jornada_tarde.split("-")
-                        setSelectedAfternoonStart(start)
-                        setSelectedAfternoonEnd(end)
-                      } else {
-                        setSelectedAfternoonStart("")
-                        setSelectedAfternoonEnd("")
-                      }
+                    onDayClick={handleDayClick}
+                    onTourInitialized={(startTour, isMounted) => {
+                      setTourStartFunction(() => startTour)
+                      setTourIsMounted(isMounted)
                     }}
                   />
                 </>

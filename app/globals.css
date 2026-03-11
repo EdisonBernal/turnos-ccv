@@ -1,5 +1,7 @@
 @import "tailwindcss";
 @import "tw-animate-css";
+/* Driver.js styles para tours guiados */
+@import "driver.js/dist/driver.css";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -122,4 +124,14 @@
   body {
     @apply bg-background text-foreground;
   }
+}
+
+/* Estilos personalizados para el tour guiado */
+.driver-popover-wrapper {
+  z-index: 99999 !important;
+}
+
+.driver-popover {
+  position: fixed !important;
+  z-index: 99999 !important;
 }

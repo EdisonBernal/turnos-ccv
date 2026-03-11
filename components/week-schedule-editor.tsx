@@ -76,7 +76,7 @@ export function WeekScheduleEditor({
   const validEndDay = Math.min(lastDayOfMonth, weekEndDate)
 
   return (
-    <div className="border border-border rounded-lg p-4 bg-background/50 space-y-4">
+    <div id={`tour-week-config-${numeroSemana}`} className="border border-border rounded-lg p-4 bg-background/50 space-y-4">
       <div className="flex justify-between items-start">
         <div>
           <h3 className="font-semibold text-foreground text-base mb-1">Semana {numeroSemana}</h3>
@@ -88,7 +88,7 @@ export function WeekScheduleEditor({
 
       {/* Copy from other weeks */}
       {numeroSemana > 1 && (
-        <div className="space-y-2 p-3 bg-secondary/20 rounded border border-secondary/30">
+        <div id={`tour-week-copy-${numeroSemana}`} className="space-y-2 p-3 bg-secondary/20 rounded border border-secondary/30">
           <label className="block text-xs font-medium text-foreground">Copiar configuración de otra semana (Lunes - Sábado)</label>
           <div className="flex gap-2 flex-wrap">
             {Array.from({ length: numeroSemana - 1 }, (_, i) => i + 1).map((week) => (
@@ -107,12 +107,13 @@ export function WeekScheduleEditor({
       )}
 
       {/* Morning shift */}
-      <div className="space-y-2">
+      <div id={`tour-week-morning-${numeroSemana}`} className="space-y-2">
         <label className="block text-sm font-medium text-foreground">Jornada Mañana</label>
         <div className="grid grid-cols-2 gap-3 mb-2">
           <div>
             <label className="block text-xs text-muted-foreground mb-1">Inicio</label>
             <input
+              id={`tour-week-morning-start-${numeroSemana}`}
               type="time"
               value={morningStart}
               onChange={(e) => setMorningStart(e.target.value)}
@@ -123,6 +124,7 @@ export function WeekScheduleEditor({
           <div>
             <label className="block text-xs text-muted-foreground mb-1">Fin</label>
             <input
+              id={`tour-week-morning-end-${numeroSemana}`}
               type="time"
               value={morningEnd}
               onChange={(e) => setMorningEnd(e.target.value)}
@@ -132,6 +134,7 @@ export function WeekScheduleEditor({
           </div>
         </div>
         <button
+          id={`tour-week-apply-morning-${numeroSemana}`}
           type="button"
           onClick={handleApplyMorning}
           disabled={isLoading || !morningStart || !morningEnd}
@@ -142,12 +145,13 @@ export function WeekScheduleEditor({
       </div>
 
       {/* Afternoon shift */}
-      <div className="space-y-2">
+      <div id={`tour-week-afternoon-${numeroSemana}`} className="space-y-2">
         <label className="block text-sm font-medium text-foreground">Jornada Tarde</label>
         <div className="grid grid-cols-2 gap-3 mb-2">
           <div>
             <label className="block text-xs text-muted-foreground mb-1">Inicio</label>
             <input
+              id={`tour-week-afternoon-start-${numeroSemana}`}
               type="time"
               value={afternoonStart}
               onChange={(e) => setAfternoonStart(e.target.value)}
@@ -158,6 +162,7 @@ export function WeekScheduleEditor({
           <div>
             <label className="block text-xs text-muted-foreground mb-1">Fin</label>
             <input
+              id={`tour-week-afternoon-end-${numeroSemana}`}
               type="time"
               value={afternoonEnd}
               onChange={(e) => setAfternoonEnd(e.target.value)}
@@ -167,6 +172,7 @@ export function WeekScheduleEditor({
           </div>
         </div>
         <button
+          id={`tour-week-apply-afternoon-${numeroSemana}`}
           type="button"
           onClick={handleApplyAfternoon}
           disabled={isLoading || !afternoonStart || !afternoonEnd}
@@ -178,6 +184,7 @@ export function WeekScheduleEditor({
 
       {/* Apply both */}
       <button
+        id={`tour-week-apply-both-${numeroSemana}`}
         type="button"
         onClick={handleApplyBoth}
         disabled={isLoading || (!morningStart || !morningEnd) && (!afternoonStart || !afternoonEnd)}
