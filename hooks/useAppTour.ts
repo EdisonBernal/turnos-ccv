@@ -137,20 +137,16 @@ export function useAppTour({ steps, tourId, onOpenDayModal }: UseAppTourProps): 
           // Obtener el índice actual del tour
           const currentStepIndex = config?.state?.activeIndex ?? -1
           
-          if (currentStepIndex === 16 && onOpenDayModal) {
-            // Buscar el primer día que tenga horarios
-            const allDays = document.querySelectorAll('[id="tour-day-with-schedule"]')
+          if (currentStepIndex === 12 && onOpenDayModal) {
+            /// Obtener la fecha actual en formato YYYY-MM-DD
+            const today = new Date()
+            const currentDate = today.toISOString().split('T')[0]
             
-            for (const dayElement of allDays) {
-              const fecha = dayElement.getAttribute('data-fecha')
-              
-              // Buscar la celda padre que tiene la clase emerald
-              const cell = dayElement.closest('[class*="bg-emerald"]')
-              
-              if (cell && fecha) {
-                onOpenDayModal(fecha)
-                return
-              }
+            const todayElement = document.querySelector(`[data-fecha="${currentDate}"]`)
+
+            if (todayElement) {
+              onOpenDayModal(currentDate)
+              return
             }
           }
         },

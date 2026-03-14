@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { isWeekFullyPast } from "@/lib/schedule-validator"
 
 interface WeekScheduleEditorProps {
   numeroSemana: number
@@ -8,7 +9,7 @@ interface WeekScheduleEditorProps {
   año: number
   jornada_manana?: string
   jornada_tarde?: string
-  onApply: (data: { jornada_manana: string | null; jornada_tarde: string | null }) => Promise<void>
+  onApply: (data: { jornada_manana: string | null; jornada_tarde: string | null }, onlyField?: "manana" | "tarde" | "both") => Promise<void>
   onCopyFromWeek: (sourceWeek: number) => Promise<void>
   isLoading: boolean
   hasContent: boolean
@@ -40,16 +41,16 @@ export function WeekScheduleEditor({
     const jornada = morningStart && morningEnd ? `${morningStart}-${morningEnd}` : null
     await onApply({
       jornada_manana: jornada,
-      jornada_tarde: jornada_tarde?.split("-")[1] ? jornada_tarde : null,
-    })
+      jornada_tarde: null,
+    }, "manana")
   }
 
   const handleApplyAfternoon = async () => {
     const jornada = afternoonStart && afternoonEnd ? `${afternoonStart}-${afternoonEnd}` : null
     await onApply({
-      jornada_manana: jornada_manana?.split("-")[1] ? jornada_manana : null,
+      jornada_manana: null,
       jornada_tarde: jornada,
-    })
+    }, "tarde")
   }
 
   const handleApplyBoth = async () => {
@@ -58,7 +59,7 @@ export function WeekScheduleEditor({
     await onApply({
       jornada_manana: morning,
       jornada_tarde: afternoon,
-    })
+    }, "both")
   }
 
   const handleCopy = async (sourceWeek: number) => {
@@ -75,8 +76,16 @@ export function WeekScheduleEditor({
   const validStartDay = Math.max(1, weekStartDate)
   const validEndDay = Math.min(lastDayOfMonth, weekEndDate)
 
+  const weekIsPast = isWeekFullyPast(mes, año, numeroSemana)
+  const effectiveDisabled = isLoading || weekIsPast
+
   return (
-    <div id={`tour-week-config-${numeroSemana}`} className="border border-border rounded-lg p-4 bg-background/50 space-y-4">
+    <div id={`tour-week-config-${numeroSemana}`} className={`border border-border rounded-lg p-4 bg-background/50 space-y-4 ${weekIsPast ? "opacity-60" : ""}`}>
+      {weekIsPast && (
+        <div className="text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30 px-3 py-1.5 rounded border border-amber-200 dark:border-amber-800">
+          Esta semana ya pasó y no se puede modificar
+        </div>
+      )}
       <div className="flex justify-between items-start">
         <div>
           <h3 className="font-semibold text-foreground text-base mb-1">Semana {numeroSemana}</h3>
@@ -96,7 +105,7 @@ export function WeekScheduleEditor({
                 key={week}
                 type="button"
                 onClick={() => handleCopy(week)}
-                disabled={isLoading}
+                disabled={effectiveDisabled}
                 className="px-3 py-1.5 text-xs bg-secondary text-secondary-foreground rounded hover:bg-secondary/90 disabled:opacity-50 cursor-pointer"
               >
                 {isLoading ? "..." : `Copiar de semana ${week}`}
@@ -117,7 +126,7 @@ export function WeekScheduleEditor({
               type="time"
               value={morningStart}
               onChange={(e) => setMorningStart(e.target.value)}
-              disabled={isLoading}
+              disabled={effectiveDisabled}
               className="w-full px-3 py-2 border border-border rounded-lg bg-background text-foreground text-sm disabled:opacity-50"
             />
           </div>
@@ -128,7 +137,7 @@ export function WeekScheduleEditor({
               type="time"
               value={morningEnd}
               onChange={(e) => setMorningEnd(e.target.value)}
-              disabled={isLoading}
+              disabled={effectiveDisabled}
               className="w-full px-3 py-2 border border-border rounded-lg bg-background text-foreground text-sm disabled:opacity-50"
             />
           </div>
@@ -137,7 +146,7 @@ export function WeekScheduleEditor({
           id={`tour-week-apply-morning-${numeroSemana}`}
           type="button"
           onClick={handleApplyMorning}
-          disabled={isLoading || !morningStart || !morningEnd}
+          disabled={effectiveDisabled || !morningStart || !morningEnd}
           className="px-3 py-1.5 text-xs bg-primary text-primary-foreground rounded hover:bg-primary/90 disabled:opacity-50 cursor-pointer"
         >
           Aplicar mañana a semana {numeroSemana}
@@ -155,7 +164,7 @@ export function WeekScheduleEditor({
               type="time"
               value={afternoonStart}
               onChange={(e) => setAfternoonStart(e.target.value)}
-              disabled={isLoading}
+              disabled={effectiveDisabled}
               className="w-full px-3 py-2 border border-border rounded-lg bg-background text-foreground text-sm disabled:opacity-50"
             />
           </div>
@@ -166,7 +175,7 @@ export function WeekScheduleEditor({
               type="time"
               value={afternoonEnd}
               onChange={(e) => setAfternoonEnd(e.target.value)}
-              disabled={isLoading}
+              disabled={effectiveDisabled}
               className="w-full px-3 py-2 border border-border rounded-lg bg-background text-foreground text-sm disabled:opacity-50"
             />
           </div>
@@ -175,7 +184,7 @@ export function WeekScheduleEditor({
           id={`tour-week-apply-afternoon-${numeroSemana}`}
           type="button"
           onClick={handleApplyAfternoon}
-          disabled={isLoading || !afternoonStart || !afternoonEnd}
+          disabled={effectiveDisabled || !afternoonStart || !afternoonEnd}
           className="px-3 py-1.5 text-xs bg-primary text-primary-foreground rounded hover:bg-primary/90 disabled:opacity-50 cursor-pointer"
         >
           Aplicar tarde a semana {numeroSemana}
@@ -187,7 +196,7 @@ export function WeekScheduleEditor({
         id={`tour-week-apply-both-${numeroSemana}`}
         type="button"
         onClick={handleApplyBoth}
-        disabled={isLoading || (!morningStart || !morningEnd) && (!afternoonStart || !afternoonEnd)}
+        disabled={effectiveDisabled || (!morningStart || !morningEnd) && (!afternoonStart || !afternoonEnd)}
         className="w-full px-3 py-2 text-sm bg-primary/90 text-primary-foreground rounded hover:bg-primary disabled:opacity-50 cursor-pointer font-medium"
       >
         {isLoading ? "Aplicando..." : `Aplicar ambos a semana ${numeroSemana}`}

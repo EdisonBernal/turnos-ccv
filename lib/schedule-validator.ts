@@ -172,6 +172,43 @@ export function getScheduleForDate(
 }
 
 /**
+ * Check if a date string (YYYY-MM-DD) is in the past relative to today in Colombia timezone (GMT-5)
+ * Returns true if the date is strictly before today
+ */
+export function isDateInPast(fecha: string): boolean {
+  const colombia = getColombiaTime()
+  const todayStr = `${colombia.getFullYear()}-${String(colombia.getMonth() + 1).padStart(2, "0")}-${String(colombia.getDate()).padStart(2, "0")}`
+  return fecha < todayStr
+}
+
+/**
+ * Check if an entire week (by week number in a month) is fully in the past
+ * Returns true only if ALL days (Mon-Sat) of that week are before today
+ */
+export function isWeekFullyPast(mes: number, año: number, numeroSemana: number): boolean {
+  const monthStart = new Date(año, mes - 1, 1)
+  const firstDayOfMonth = monthStart.getDay()
+  const weekStartDate = 1 + (numeroSemana - 1) * 7 - firstDayOfMonth
+  const weekEndDate = weekStartDate + 6
+  const lastDayOfMonth = new Date(año, mes, 0).getDate()
+
+  const validEndDay = Math.min(lastDayOfMonth, weekEndDate)
+
+  // Check the last valid day in the week — if it's past, the whole week is past
+  const lastDate = new Date(año, mes - 1, validEndDay)
+  const lastDateStr = lastDate.toISOString().split("T")[0]
+  return isDateInPast(lastDateStr)
+}
+
+/**
+ * Get today's date string in Colombia timezone (YYYY-MM-DD)
+ */
+export function getTodayDateString(): string {
+  const colombia = getColombiaTime()
+  return `${colombia.getFullYear()}-${String(colombia.getMonth() + 1).padStart(2, "0")}-${String(colombia.getDate()).padStart(2, "0")}`
+}
+
+/**
  * Get display status for employee
  * @param enTurnoFlag - Manual flag
  * @param horarios - Weekly schedules (fallback)
