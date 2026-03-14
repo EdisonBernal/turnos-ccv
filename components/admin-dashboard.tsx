@@ -97,52 +97,52 @@ export function AdminDashboard({ personal: initialPersonal, horarios, areas, adm
 
   return (
     <div className="space-y-8">
-      <div className="flex gap-2 border-b border-border">
+      <div className="flex gap-1 sm:gap-2 border-b border-border">
         <button
           onClick={() => setActiveTab("empleados")}
-          className={`inline-flex items-center gap-2 px-4 py-3 font-medium transition-colors border-b-2 -mb-px cursor-pointer ${
+          className={`inline-flex items-center justify-center text-center gap-1.5 sm:gap-2 px-2 sm:px-4 py-2 sm:py-3 text-xs sm:text-base font-medium transition-colors border-b-2 -mb-px cursor-pointer flex-1 sm:flex-initial sm:whitespace-nowrap ${
             activeTab === "empleados"
               ? "text-primary border-primary"
               : "text-muted-foreground border-transparent hover:text-foreground cursor-pointer"
           }`}
         >
-          <Users className="w-4 h-4" />
+          <Users className="w-4 h-4 hidden sm:block shrink-0" />
           Empleados
         </button>
         {adminNivel === 1 && (
           <button
             onClick={() => setActiveTab("usuarios")}
-            className={`inline-flex items-center gap-2 px-4 py-3 font-medium transition-colors border-b-2 -mb-px ${
+          className={`inline-flex items-center justify-center text-center gap-1.5 sm:gap-2 px-2 sm:px-4 py-2 sm:py-3 text-xs sm:text-base font-medium transition-colors border-b-2 -mb-px flex-1 sm:flex-initial sm:whitespace-nowrap ${
               activeTab === "usuarios"
                 ? "text-primary border-primary"
                 : "text-muted-foreground border-transparent hover:text-foreground cursor-pointer"
             }`}
           >
-            <UserCog className="w-4 h-4" />
+            <UserCog className="w-4 h-4 hidden sm:block shrink-0" />
             Usuarios Admin
           </button>
         )}
         <button
           onClick={() => setActiveTab("historial")}
-          className={`inline-flex items-center gap-2 px-4 py-3 font-medium transition-colors border-b-2 -mb-px ${
+          className={`inline-flex items-center justify-center text-center gap-1.5 sm:gap-2 px-2 sm:px-4 py-2 sm:py-3 text-xs sm:text-base font-medium transition-colors border-b-2 -mb-px flex-1 sm:flex-initial sm:whitespace-nowrap ${
             activeTab === "historial"
               ? "text-primary border-primary"
               : "text-muted-foreground border-transparent hover:text-foreground cursor-pointer"
           }`}
         >
-          <CalendarClock className="w-4 h-4" />
+          <CalendarClock className="w-4 h-4 hidden sm:block shrink-0" />
           Historial de Horarios
         </button>
         {adminNivel === 1 && (
           <button
             onClick={() => setActiveTab("festivos")}
-            className={`inline-flex items-center gap-2 px-4 py-3 font-medium transition-colors border-b-2 -mb-px ${
+          className={`inline-flex items-center justify-center text-center gap-1.5 sm:gap-2 px-2 sm:px-4 py-2 sm:py-3 text-xs sm:text-base font-medium transition-colors border-b-2 -mb-px flex-1 sm:flex-initial sm:whitespace-nowrap ${
               activeTab === "festivos"
                 ? "text-primary border-primary"
                 : "text-muted-foreground border-transparent hover:text-foreground cursor-pointer"
             }`}
           >
-            <Calendar className="w-4 h-4" />
+            <Calendar className="w-4 h-4 hidden sm:block shrink-0" />
             Festivos
           </button>
         )}

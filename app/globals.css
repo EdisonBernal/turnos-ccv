@@ -126,6 +126,14 @@
   }
 }
 
+@utility scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
 /* Estilos personalizados para el tour guiado */
 .driver-popover-wrapper {
   z-index: 99999 !important;
