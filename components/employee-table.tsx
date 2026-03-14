@@ -1,5 +1,9 @@
 "use client"
 
+import { useState, useMemo } from "react"
+import { deleteEmployee } from "@/app/actions/employee-actions"
+import { Pencil, Trash2, Search } from "lucide-react"
+
 interface Personal {
   id: string
   nombre_completo: string
@@ -25,10 +29,25 @@ interface EmployeeTableProps {
   onDelete: (employeeId: string) => void
 }
 
-import { deleteEmployee } from "@/app/actions/employee-actions"
-import { Pencil, Trash2 } from "lucide-react"
-
 export function EmployeeTable({ employees, horarios, onEdit, onDelete }: EmployeeTableProps) {
+  const [nameFilter, setNameFilter] = useState("")
+  const [areaFilter, setAreaFilter] = useState("")
+  const [statusFilter, setStatusFilter] = useState<"" | "turno" | "fuera">("")
+
+  const areas = useMemo(() => {
+    return Array.from(new Set(employees.map((e) => e.area))).sort()
+  }, [employees])
+
+  const filteredEmployees = useMemo(() => {
+    return employees.filter((emp) => {
+      if (nameFilter && !emp.nombre_completo.toLowerCase().includes(nameFilter.toLowerCase())) return false
+      if (areaFilter && emp.area !== areaFilter) return false
+      if (statusFilter === "turno" && !emp.en_turno) return false
+      if (statusFilter === "fuera" && emp.en_turno) return false
+      return true
+    })
+  }, [employees, nameFilter, areaFilter, statusFilter])
+
   const handleDelete = async (employee: Personal) => {
     if (!confirm(`¿Eliminar a ${employee.nombre_completo}?`)) return
 
@@ -41,6 +60,46 @@ export function EmployeeTable({ employees, horarios, onEdit, onDelete }: Employe
   }
 
   return (
+    <div className="space-y-4">
+      {/* Filtros */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <input
+            type="text"
+            placeholder="Buscar por nombre..."
+            value={nameFilter}
+            onChange={(e) => setNameFilter(e.target.value)}
+            className="w-full pl-9 pr-3 py-2 border border-border rounded-lg bg-background text-foreground text-sm placeholder:text-muted-foreground"
+          />
+        </div>
+        <select
+          value={areaFilter}
+          onChange={(e) => setAreaFilter(e.target.value)}
+          className="w-full px-3 py-2 border border-border rounded-lg bg-background text-foreground text-sm"
+        >
+          <option value="">Todas las áreas</option>
+          {areas.map((area) => (
+            <option key={area} value={area}>{area}</option>
+          ))}
+        </select>
+        <select
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value as "" | "turno" | "fuera")}
+          className="w-full px-3 py-2 border border-border rounded-lg bg-background text-foreground text-sm"
+        >
+          <option value="">Todos los estados</option>
+          <option value="turno">En turno</option>
+          <option value="fuera">Fuera de turno</option>
+        </select>
+      </div>
+
+      {(nameFilter || areaFilter || statusFilter) && (
+        <div className="text-xs text-muted-foreground">
+          {filteredEmployees.length} de {employees.length} empleado{employees.length !== 1 ? "s" : ""}
+        </div>
+      )}
+
     <div className="overflow-x-auto border border-border rounded-lg bg-card">
       <table className="w-full">
         <thead className="bg-muted border-b border-border">
@@ -53,7 +112,14 @@ export function EmployeeTable({ employees, horarios, onEdit, onDelete }: Employe
           </tr>
         </thead>
         <tbody className="divide-y divide-border">
-          {employees.map((employee) => {
+          {filteredEmployees.length === 0 ? (
+            <tr>
+              <td colSpan={5} className="px-6 py-8 text-center text-sm text-muted-foreground">
+                No se encontraron empleados con los filtros seleccionados
+              </td>
+            </tr>
+          ) : (
+          filteredEmployees.map((employee) => {
             const employeeHorarios = horarios.filter((h) => h.personal_id === employee.id)
             return (
               <tr key={employee.id} className="hover:bg-muted/50 transition-colors">
@@ -89,9 +155,11 @@ export function EmployeeTable({ employees, horarios, onEdit, onDelete }: Employe
                 </td>
               </tr>
             )
-          })}
+          })
+          )}
         </tbody>
       </table>
+    </div>
     </div>
   )
 }
