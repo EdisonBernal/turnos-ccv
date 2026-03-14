@@ -3,6 +3,15 @@
 import { getAdminClient } from "@/lib/supabase/admin"
 import type { Database } from "@/types/supabase"
 
+/**
+ * Server-side check: is a date (YYYY-MM-DD) in the past relative to Colombia timezone?
+ */
+function isDateInPastServer(fecha: string): boolean {
+  const now = new Date(new Date().toLocaleString("en-US", { timeZone: "America/Bogota" }))
+  const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`
+  return fecha < todayStr
+}
+
 export async function addEmployee(data: {
   nombre_completo: string
   area: string
@@ -190,6 +199,11 @@ export async function updateMonthlySchedule(
   },
 ) {
   try {
+    // Reject edits to past dates
+    if (isDateInPastServer(fecha)) {
+      return { success: false, error: "No se puede modificar horarios de días anteriores" }
+    }
+
     const supabase = getAdminClient()
 
     // Check if record already exists
@@ -240,6 +254,11 @@ export async function updateMonthlySchedule(
  */
 export async function deleteMonthlySchedule(personalId: string, fecha: string) {
   try {
+    // Reject deletes to past dates
+    if (isDateInPastServer(fecha)) {
+      return { success: false, error: "No se puede eliminar horarios de días anteriores" }
+    }
+
     const supabase = getAdminClient()
 
     const { error } = await supabase
@@ -271,6 +290,7 @@ export async function updateWeeklySchedules(
     jornada_manana: string | null
     jornada_tarde: string | null
   },
+  onlyField?: "manana" | "tarde" | "both",
 ) {
   try {
     const supabase = getAdminClient()
@@ -296,12 +316,48 @@ export async function updateWeeklySchedules(
       }
     }
 
-    // Update all dates in the week (excluding Sunday)
-    for (const fecha of weekDates) {
-      await updateMonthlySchedule(personalId, fecha, data)
+    // Filter out past dates — they cannot be modified
+    const editableDates = weekDates.filter((fecha) => !isDateInPastServer(fecha))
+    const skippedCount = weekDates.length - editableDates.length
+
+    // For partial updates (morning-only or afternoon-only), fetch existing records
+    // to preserve the other field's value per day
+    let existingByDate: Record<string, { jornada_manana: string | null; jornada_tarde: string | null }> = {}
+    if (onlyField && onlyField !== "both" && editableDates.length > 0) {
+      const { data: existing } = await supabase
+        .from("horarios_mensual")
+        .select("fecha, jornada_manana, jornada_tarde")
+        .eq("personal_id", personalId)
+        .in("fecha", editableDates)
+
+      if (existing) {
+        for (const rec of existing) {
+          existingByDate[rec.fecha] = {
+            jornada_manana: rec.jornada_manana,
+            jornada_tarde: rec.jornada_tarde,
+          }
+        }
+      }
     }
 
-    return { success: true }
+    // Update only editable dates (today + future)
+    for (const fecha of editableDates) {
+      let mergedData = data
+      if (onlyField === "manana") {
+        mergedData = {
+          jornada_manana: data.jornada_manana,
+          jornada_tarde: existingByDate[fecha]?.jornada_tarde ?? null,
+        }
+      } else if (onlyField === "tarde") {
+        mergedData = {
+          jornada_manana: existingByDate[fecha]?.jornada_manana ?? null,
+          jornada_tarde: data.jornada_tarde,
+        }
+      }
+      await updateMonthlySchedule(personalId, fecha, mergedData)
+    }
+
+    return { success: true, applied: editableDates.length, skipped: skippedCount }
   } catch (error: any) {
     console.error("[updateWeeklySchedules] error:", error.message)
     return { success: false, error: error.message }
@@ -373,5 +429,68 @@ export async function copyWeekToWeek(
   } catch (error: any) {
     console.error("[copyWeekToWeek] error:", error.message)
     return { success: false, error: error.message }
+  }
+}
+
+/**
+ * Get schedule history for a date range, optionally filtered by employee
+ * If personalId is "todos", returns schedules for ALL employees
+ * Supports single month or date range queries
+ */
+export async function getScheduleHistory(
+  personalId: string,
+  mes: number,
+  año: number,
+  mesHasta?: number,
+  añoHasta?: number,
+) {
+  try {
+    const supabase = getAdminClient()
+
+    const monthStart = new Date(año, mes - 1, 1).toISOString().split("T")[0]
+    const endMonth = mesHasta ?? mes
+    const endYear = añoHasta ?? año
+    const monthEnd = new Date(endYear, endMonth, 0).toISOString().split("T")[0]
+
+    let query = supabase
+      .from("horarios_mensual")
+      .select("*, personal:personal_id(nombre_completo, area)")
+      .gte("fecha", monthStart)
+      .lte("fecha", monthEnd)
+      .order("fecha", { ascending: true })
+
+    if (personalId !== "todos") {
+      query = query.eq("personal_id", personalId)
+    }
+
+    const { data, error } = await query
+
+    if (error) throw error
+
+    return { success: true, schedules: data || [] }
+  } catch (error: any) {
+    console.error("[getScheduleHistory] error:", error.message)
+    return { success: false, error: error.message, schedules: [] }
+  }
+}
+
+/**
+ * Get all employees (id and name) for selection dropdowns
+ */
+export async function getEmployeesList() {
+  try {
+    const supabase = getAdminClient()
+
+    const { data, error } = await supabase
+      .from("personal")
+      .select("id, nombre_completo, area")
+      .order("nombre_completo", { ascending: true })
+
+    if (error) throw error
+
+    return { success: true, employees: data || [] }
+  } catch (error: any) {
+    console.error("[getEmployeesList] error:", error.message)
+    return { success: false, error: error.message, employees: [] }
   }
 }

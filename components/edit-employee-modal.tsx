@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState, useCallback } from "react"
+import { useState, useCallback, useEffect } from "react"
 import { createClient } from "@/lib/supabase/client"
 import {
   updateEmployee,
@@ -13,8 +13,10 @@ import {
   deleteMonthlySchedule,
   updateMonthlySchedule,
 } from "@/app/actions/employee-actions"
+import { getFestivos } from "@/app/actions/festivos-actions"
 import { MonthlyCalendar } from "@/components/monthly-calendar"
 import { WeekScheduleEditor } from "@/components/week-schedule-editor"
+import { isDateInPast } from "@/lib/schedule-validator"
 
 interface Personal {
   id: string
@@ -38,6 +40,12 @@ interface HorarioMensual {
   fecha: string
   jornada_manana?: string
   jornada_tarde?: string
+}
+
+interface Festivo {
+  id?: string
+  fecha: string
+  nombre: string
 }
 
 interface EditEmployeeModalProps {
@@ -65,6 +73,7 @@ export function EditEmployeeModal({ employee, horarios, areas, adminNivel, onUpd
 
   // Monthly schedules state
   const [monthlySchedules, setMonthlySchedules] = useState<HorarioMensual[]>([])
+  const [festivos, setFestivos] = useState<Festivo[]>([])
   const [selectedMonth, setSelectedMonth] = useState(() => {
     const now = new Date()
     return now.getMonth() + 1 // 1-12
@@ -141,10 +150,23 @@ export function EditEmployeeModal({ employee, horarios, areas, adminNivel, onUpd
       if (result.success) {
         setMonthlySchedules(result.schedules as HorarioMensual[])
       }
+      
+      // Load festivos for the selected month/year
+      const festivosResult = await getFestivos(selectedYear)
+      if (festivosResult.success && festivosResult.festivos) {
+        setFestivos(festivosResult.festivos)
+      }
     } finally {
       setMonthlyLoading(false)
     }
   }
+
+  // Auto-load schedules cuando cambia el mes/año
+  useEffect(() => {
+    if (tab === "horarios-mensual") {
+      loadMonthlySchedules()
+    }
+  }, [selectedMonth, selectedYear, tab, employee.id])
 
   const handleInfoSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -197,6 +219,32 @@ export function EditEmployeeModal({ employee, horarios, areas, adminNivel, onUpd
     newSchedules[idx].jornada_manana = "07:00-23:59"
     setSchedules(newSchedules)
   }
+
+  // Funciones para la sección de edición diaria
+  const getDayOfWeek = (fecha: string): number => {
+    const date = new Date(fecha + "T12:00:00")
+    return date.getDay() // 0 = Domingo, 1 = Lunes, ..., 6 = Sábado
+  }
+
+  const clearDaySchedule = (period: 'manana' | 'tarde') => {
+    if (period === 'manana') {
+      setSelectedMorningStart("")
+      setSelectedMorningEnd("")
+    } else {
+      setSelectedAfternoonStart("")
+      setSelectedAfternoonEnd("")
+    }
+  }
+
+  const setDayAvailability = () => {
+    setSelectedMorningStart("07:00")
+    setSelectedMorningEnd("23:59")
+  }
+
+  const hasMorningSchedule = selectedMorningStart && selectedMorningEnd
+  const hasAfternoonSchedule = selectedAfternoonStart && selectedAfternoonEnd
+  const dayOfWeek = selectedDate ? getDayOfWeek(selectedDate) : -1
+  const isWeekend = dayOfWeek === 0 || dayOfWeek === 6
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
@@ -683,12 +731,19 @@ export function EditEmployeeModal({ employee, horarios, areas, adminNivel, onUpd
                     numeroSemana={week}
                     mes={selectedMonth}
                     año={selectedYear}
-                    onApply={async (data) => {
+                    onApply={async (data, onlyField) => {
                       setMonthlyLoading(true)
                       try {
-                        const result = await updateWeeklySchedules(employee.id, selectedMonth, selectedYear, week, data)
+                        const result = await updateWeeklySchedules(employee.id, selectedMonth, selectedYear, week, data, onlyField)
                         if (result.success) {
                           await loadMonthlySchedules()
+                          if (result.skipped && result.skipped > 0) {
+                            if (result.applied === 0) {
+                              alert("No se pudo aplicar: todos los días de esta semana ya pasaron.")
+                            } else {
+                              alert(`Aplicado a ${result.applied} día${result.applied !== 1 ? "s" : ""}. ${result.skipped} día${result.skipped !== 1 ? "s" : ""} anterior${result.skipped !== 1 ? "es" : ""} fueron omitidos.`)
+                            }
+                          }
                         } else {
                           alert("Error al aplicar: " + result.error)
                         }
@@ -734,6 +789,12 @@ export function EditEmployeeModal({ employee, horarios, areas, adminNivel, onUpd
                   {selectedDate && (
                     <div id="tour-edit-day-section" className="mb-4 p-4 border border-border rounded-lg bg-background/50">
                       <h4 className="text-sm font-semibold text-foreground mb-2">Editar horario para {selectedDate}</h4>
+                      {isDateInPast(selectedDate) ? (
+                        <div className="text-sm text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30 px-3 py-2 rounded border border-amber-200 dark:border-amber-800">
+                          Este día ya pasó y no se puede modificar su horario.
+                        </div>
+                      ) : (
+                        <>
                       <div className="grid grid-cols-2 gap-4">
                         <div>
                           <label className="block text-xs text-muted-foreground mb-1">Mañana inicio</label>
@@ -776,6 +837,38 @@ export function EditEmployeeModal({ employee, horarios, areas, adminNivel, onUpd
                           />
                         </div>
                       </div>
+                      <div className="mt-4 space-y-3">
+                        {/* Botones de acción */}
+                        <div className="flex flex-wrap gap-2 text-sm">
+                          {isWeekend && (
+                            <button
+                              type="button"
+                              onClick={setDayAvailability}
+                              className="text-emerald-600 hover:text-emerald-800 dark:text-emerald-400 dark:hover:text-emerald-300 underline cursor-pointer"
+                            >
+                              Disponibilidad
+                            </button>
+                          )}
+                          {hasMorningSchedule && (
+                            <button
+                              type="button"
+                              onClick={() => clearDaySchedule('manana')}
+                              className="text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 underline cursor-pointer"
+                            >
+                              Limpiar mañana
+                            </button>
+                          )}
+                          {hasAfternoonSchedule && (
+                            <button
+                              type="button"
+                              onClick={() => clearDaySchedule('tarde')}
+                              className="text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 underline cursor-pointer"
+                            >
+                              Limpiar tarde
+                            </button>
+                          )}
+                        </div>
+                      </div>
                       <div className="mt-3 flex gap-2">
                         <button
                           type="button"
@@ -806,6 +899,19 @@ export function EditEmployeeModal({ employee, horarios, areas, adminNivel, onUpd
                           Cancelar
                         </button>
                       </div>
+                        </>
+                      )}
+                      {isDateInPast(selectedDate) && (
+                        <div className="mt-3">
+                          <button
+                            type="button"
+                            onClick={() => setSelectedDate("")}
+                            className="px-4 py-2 border border-border rounded-lg hover:bg-muted text-sm"
+                          >
+                            Cerrar
+                          </button>
+                        </div>
+                      )}
                     </div>
                   )}
 
@@ -813,6 +919,7 @@ export function EditEmployeeModal({ employee, horarios, areas, adminNivel, onUpd
                     mes={selectedMonth}
                     año={selectedYear}
                     schedules={monthlySchedules}
+                    festivos={festivos}
                     onDayClick={handleDayClick}
                     onTourInitialized={(startTour, isMounted) => {
                       setTourStartFunction(() => startTour)

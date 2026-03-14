@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react"
 import { useAppTour } from "@/hooks/useAppTour"
 import { monthlyScheduleTourSteps, MONTHLY_SCHEDULE_TOUR_ID } from "@/lib/monthly-schedule-tour"
+import { isDateInPast, getTodayDateString } from "@/lib/schedule-validator"
 
 interface MonthlySchedule {
   fecha: string
@@ -10,10 +11,17 @@ interface MonthlySchedule {
   jornada_tarde?: string
 }
 
+interface Festivo {
+  id?: string
+  fecha: string
+  nombre: string
+}
+
 interface MonthlyCalendarProps {
   mes: number
   año: number
   schedules: MonthlySchedule[]
+  festivos?: Festivo[]
   onDayClick: (fecha: string) => void
   onTourInitialized?: (startTour: () => void, isMounted: boolean) => void
 }
@@ -24,7 +32,7 @@ const MESES = [
   "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"
 ]
 
-export function MonthlyCalendar({ mes, año, schedules, onDayClick, onTourInitialized }: MonthlyCalendarProps) {
+export function MonthlyCalendar({ mes, año, schedules, festivos = [], onDayClick, onTourInitialized }: MonthlyCalendarProps) {
   // Get first day of month (0 = Sunday, 1 = Monday, etc.)
   const monthStart = new Date(año, mes - 1, 1)
   const firstDay = monthStart.getDay()
@@ -87,6 +95,20 @@ export function MonthlyCalendar({ mes, año, schedules, onDayClick, onTourInitia
     return !!(schedule && (schedule.jornada_manana || schedule.jornada_tarde))
   }
 
+  const isDayPast = (day: number): boolean => {
+    const fecha = `${año}-${String(mes).padStart(2, "0")}-${String(day).padStart(2, "0")}`
+    return isDateInPast(fecha)
+  }
+
+  const getFestivoForDay = (day: number): Festivo | undefined => {
+    const fecha = `${año}-${String(mes).padStart(2, "0")}-${String(day).padStart(2, "0")}`
+    return festivos.find((f) => f.fecha === fecha)
+  }
+
+  const isFestivo = (day: number): boolean => {
+    return !!getFestivoForDay(day)
+  }
+
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center mb-4">
@@ -115,11 +137,20 @@ export function MonthlyCalendar({ mes, año, schedules, onDayClick, onTourInitia
                 onClick={() => day && onDayClick(new Date(año, mes - 1, day).toISOString().split("T")[0])}
                 className={`min-h-24 p-2 border-r border-b border-border last:border-r-0 ${
                   day ? "cursor-pointer hover:bg-muted/50 transition-colors" : "bg-muted/20"
-                } ${hasSchedule(day || 0) ? "bg-emerald-50 dark:bg-emerald-950/30" : ""}`}
+                } ${hasSchedule(day || 0) ? "bg-emerald-50 dark:bg-emerald-950/30" : ""} ${day && isDayPast(day) ? "opacity-50" : ""}`}
               >
                 {day && (
                   <div id="tour-day-with-schedule" data-fecha={new Date(año, mes - 1, day).toISOString().split("T")[0]} className="text-sm">
-                    <div className="font-semibold text-foreground mb-1">{day}</div>
+                    <div 
+                      className={`font-semibold mb-1 w-6 h-6 flex items-center justify-center rounded-full ${
+                        isFestivo(day) 
+                          ? "bg-red-200 dark:bg-red-900/50 text-red-700 dark:text-red-300" 
+                          : "text-foreground"
+                      }`}
+                      title={isFestivo(day) ? getFestivoForDay(day)?.nombre : undefined}
+                    >
+                      {day}
+                    </div>
                     {getScheduleForDay(day) && (
                       <div className="space-y-1 text-xs">
                         {getScheduleForDay(day)?.jornada_manana && (
@@ -151,7 +182,7 @@ export function MonthlyCalendar({ mes, año, schedules, onDayClick, onTourInitia
       </div>
 
       {/* Legend */}
-      <div id="tour-calendar-legend" className="flex gap-4 text-xs text-muted-foreground">
+      <div id="tour-calendar-legend" className="flex gap-4 text-xs text-muted-foreground flex-wrap">
         <div className="flex items-center gap-2">
           <div className="w-3 h-3 bg-blue-100 dark:bg-blue-900/40 rounded"></div>
           <span>Mañana</span>
@@ -159,6 +190,10 @@ export function MonthlyCalendar({ mes, año, schedules, onDayClick, onTourInitia
         <div className="flex items-center gap-2">
           <div className="w-3 h-3 bg-orange-100 dark:bg-orange-900/40 rounded"></div>
           <span>Tarde</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="w-3 h-3 bg-red-200 dark:bg-red-900/40 rounded"></div>
+          <span>Día Festivo</span>
         </div>
       </div>
     </div>

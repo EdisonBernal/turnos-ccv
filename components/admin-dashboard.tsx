@@ -1,13 +1,15 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Users, UserCog } from "lucide-react"
+import { Users, UserCog, CalendarClock, Calendar } from "lucide-react"
 import { AddEmployeeModal } from "./add-employee-modal"
 import { EmployeeTable } from "./employee-table"
 import { EditEmployeeModal } from "./edit-employee-modal"
 import { AdminUsersTable } from "./admin-users-table"
 import { AddAdminUserModal } from "./add-admin-user-modal"
 import { EditAdminUserModal } from "./edit-admin-user-modal"
+import { ScheduleHistory } from "./schedule-history"
+import { FestivosManager } from "./festivos-manager"
 import { getAdminUsers, type AdminUser } from "@/app/actions/admin-user-actions"
 
 interface Personal {
@@ -36,7 +38,7 @@ interface AdminDashboardProps {
   adminAreas: string[]
 }
 
-type TabType = "empleados" | "usuarios"
+type TabType = "empleados" | "usuarios" | "historial" | "festivos"
 
 export function AdminDashboard({ personal: initialPersonal, horarios, areas, adminNivel, adminAreas }: AdminDashboardProps) {
   const [personal, setPersonal] = useState<Personal[]>(initialPersonal)
@@ -95,19 +97,19 @@ export function AdminDashboard({ personal: initialPersonal, horarios, areas, adm
 
   return (
     <div className="space-y-8">
-      {adminNivel === 1 && (
-        <div className="flex gap-2 border-b border-border">
-          <button
-            onClick={() => setActiveTab("empleados")}
-            className={`inline-flex items-center gap-2 px-4 py-3 font-medium transition-colors border-b-2 -mb-px cursor-pointer${
-              activeTab === "empleados"
-                ? "text-primary border-primary"
-                : "text-muted-foreground border-transparent hover:text-foreground cursor-pointer"
-            }`}
-          >
-            <Users className="w-4 h-4" />
-            Empleados
-          </button>
+      <div className="flex gap-2 border-b border-border">
+        <button
+          onClick={() => setActiveTab("empleados")}
+          className={`inline-flex items-center gap-2 px-4 py-3 font-medium transition-colors border-b-2 -mb-px cursor-pointer ${
+            activeTab === "empleados"
+              ? "text-primary border-primary"
+              : "text-muted-foreground border-transparent hover:text-foreground cursor-pointer"
+          }`}
+        >
+          <Users className="w-4 h-4" />
+          Empleados
+        </button>
+        {adminNivel === 1 && (
           <button
             onClick={() => setActiveTab("usuarios")}
             className={`inline-flex items-center gap-2 px-4 py-3 font-medium transition-colors border-b-2 -mb-px ${
@@ -119,8 +121,32 @@ export function AdminDashboard({ personal: initialPersonal, horarios, areas, adm
             <UserCog className="w-4 h-4" />
             Usuarios Admin
           </button>
-        </div>
-      )}
+        )}
+        <button
+          onClick={() => setActiveTab("historial")}
+          className={`inline-flex items-center gap-2 px-4 py-3 font-medium transition-colors border-b-2 -mb-px ${
+            activeTab === "historial"
+              ? "text-primary border-primary"
+              : "text-muted-foreground border-transparent hover:text-foreground cursor-pointer"
+          }`}
+        >
+          <CalendarClock className="w-4 h-4" />
+          Historial de Horarios
+        </button>
+        {adminNivel === 1 && (
+          <button
+            onClick={() => setActiveTab("festivos")}
+            className={`inline-flex items-center gap-2 px-4 py-3 font-medium transition-colors border-b-2 -mb-px ${
+              activeTab === "festivos"
+                ? "text-primary border-primary"
+                : "text-muted-foreground border-transparent hover:text-foreground cursor-pointer"
+            }`}
+          >
+            <Calendar className="w-4 h-4" />
+            Festivos
+          </button>
+        )}
+      </div>
 
       {/* Contenido de empleados */}
       {activeTab === "empleados" && (
@@ -194,6 +220,14 @@ export function AdminDashboard({ personal: initialPersonal, horarios, areas, adm
             />
           )}
         </>
+      )}
+
+      {activeTab === "historial" && (
+        <ScheduleHistory adminNivel={adminNivel} adminAreas={adminAreas} />
+      )}
+
+      {activeTab === "festivos" && adminNivel === 1 && (
+        <FestivosManager adminNivel={adminNivel} />
       )}
     </div>
   )
