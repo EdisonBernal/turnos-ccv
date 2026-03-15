@@ -17,6 +17,7 @@ import { getFestivos } from "@/app/actions/festivos-actions"
 import { MonthlyCalendar } from "@/components/monthly-calendar"
 import { WeekScheduleEditor } from "@/components/week-schedule-editor"
 import { isDateInPast } from "@/lib/schedule-validator"
+import { useNewFeatureBadge } from "@/hooks/use-new-feature-badge"
 
 interface Personal {
   id: string
@@ -241,6 +242,8 @@ export function EditEmployeeModal({ employee, horarios, areas, adminNivel, onUpd
     setSelectedMorningEnd("23:59")
   }
 
+  const { showBadge: showNewBadge, dismiss: dismissNewBadge } = useNewFeatureBadge("horarios-mensual", new Date("2026-05-13"))
+
   const hasMorningSchedule = selectedMorningStart && selectedMorningEnd
   const hasAfternoonSchedule = selectedAfternoonStart && selectedAfternoonEnd
   const dayOfWeek = selectedDate ? getDayOfWeek(selectedDate) : -1
@@ -251,7 +254,7 @@ export function EditEmployeeModal({ employee, horarios, areas, adminNivel, onUpd
       <div className="bg-card rounded-lg shadow-xl max-w-5xl w-full max-h-[90vh] overflow-y-auto">
         <div className="sticky top-0 bg-card border-b border-border px-6 py-4 flex justify-between items-center">
           <h2 className="text-xl font-bold text-foreground">Editar Empleado</h2>
-          <button onClick={onClose} className="text-muted-foreground hover:text-foreground">
+          <button onClick={onClose} className="text-muted-foreground hover:text-foreground cursor-pointer">
             ✕
           </button>
         </div>
@@ -259,7 +262,7 @@ export function EditEmployeeModal({ employee, horarios, areas, adminNivel, onUpd
         <div className="flex border-b border-border">
           <button
             onClick={() => setTab("info")}
-            className={`flex-1 px-4 py-3 font-medium text-sm border-b-2 transition-colors ${
+            className={`flex-1 px-4 py-3 font-medium text-sm border-b-2 transition-colors cursor-pointer ${
               tab === "info"
                 ? "border-primary text-primary"
                 : "border-transparent text-muted-foreground hover:text-foreground"
@@ -269,7 +272,7 @@ export function EditEmployeeModal({ employee, horarios, areas, adminNivel, onUpd
           </button>
           <button
             onClick={() => setTab("horarios")}
-            className={`flex-1 px-4 py-3 font-medium text-sm border-b-2 transition-colors ${
+            className={`flex-1 px-4 py-3 font-medium text-sm border-b-2 transition-colors cursor-pointer ${
               tab === "horarios"
                 ? "border-primary text-primary"
                 : "border-transparent text-muted-foreground hover:text-foreground"
@@ -282,14 +285,20 @@ export function EditEmployeeModal({ employee, horarios, areas, adminNivel, onUpd
             onClick={() => {
               setTab("horarios-mensual")
               loadMonthlySchedules()
+              dismissNewBadge()
             }}
-            className={`flex-1 px-4 py-3 font-medium text-sm border-b-2 transition-colors ${
+            className={`flex-1 px-4 py-3 font-medium text-sm border-b-2 transition-colors cursor-pointer ${
               tab === "horarios-mensual"
                 ? "border-primary text-primary"
                 : "border-transparent text-muted-foreground hover:text-foreground"
             }`}
           >
             Horarios (Mensual)
+            {showNewBadge && (
+              <span className="ml-1.5 inline-block text-[10px] font-bold uppercase bg-emerald-500 text-white rounded-full px-1.5 py-0.5 animate-pulse-subtle">
+                NEW
+              </span>
+            )}
           </button>
         </div>
 
@@ -669,7 +678,7 @@ export function EditEmployeeModal({ employee, horarios, areas, adminNivel, onUpd
             <button
               type="button"
               onClick={tourStartFunction}
-              className="px-3 py-1.5 border border-border rounded-lg hover:bg-muted text-xs font-medium gap-2 flex items-center"
+              className="px-3 py-1.5 border border-border rounded-lg hover:bg-muted text-xs font-medium gap-2 flex items-center cursor-pointer"
             >
               <span>👁️</span>
               Ver tour
@@ -885,7 +894,7 @@ export function EditEmployeeModal({ employee, horarios, areas, adminNivel, onUpd
                               setMonthlyLoading(false)
                             }
                           }}
-                          className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 text-sm"
+                          className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 text-sm cursor-pointer"
                         >
                           Guardar
                         </button>
@@ -894,7 +903,7 @@ export function EditEmployeeModal({ employee, horarios, areas, adminNivel, onUpd
                           onClick={() => {
                             setSelectedDate("")
                           }}
-                          className="px-4 py-2 border border-border rounded-lg hover:bg-muted text-sm"
+                          className="px-4 py-2 border border-border rounded-lg hover:bg-muted text-sm cursor-pointer"
                         >
                           Cancelar
                         </button>
@@ -906,7 +915,7 @@ export function EditEmployeeModal({ employee, horarios, areas, adminNivel, onUpd
                           <button
                             type="button"
                             onClick={() => setSelectedDate("")}
-                            className="px-4 py-2 border border-border rounded-lg hover:bg-muted text-sm"
+                            className="px-4 py-2 border border-border rounded-lg hover:bg-muted text-sm cursor-pointer"
                           >
                             Cerrar
                           </button>

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { Users, UserCog, CalendarClock, Calendar } from "lucide-react"
+import { useNewFeatureBadge } from "@/hooks/use-new-feature-badge"
 import { AddEmployeeModal } from "./add-employee-modal"
 import { EmployeeTable } from "./employee-table"
 import { EditEmployeeModal } from "./edit-employee-modal"
@@ -50,6 +51,7 @@ export function AdminDashboard({ personal: initialPersonal, horarios, areas, adm
   const [showAddAdminModal, setShowAddAdminModal] = useState(false)
   const [editingAdminUser, setEditingAdminUser] = useState<AdminUser | null>(null)
   const [loadingUsers, setLoadingUsers] = useState(false)
+  const { showBadge: showHistorialBadge, dismiss: dismissHistorialBadge } = useNewFeatureBadge("historial-horarios", new Date("2026-05-13"))
 
   // Cargar usuarios admin cuando se activa la pestaña
   useEffect(() => {
@@ -123,7 +125,10 @@ export function AdminDashboard({ personal: initialPersonal, horarios, areas, adm
           </button>
         )}
         <button
-          onClick={() => setActiveTab("historial")}
+          onClick={() => {
+            setActiveTab("historial")
+            dismissHistorialBadge()
+          }}
           className={`inline-flex items-center justify-center text-center gap-1.5 sm:gap-2 px-2 sm:px-4 py-2 sm:py-3 text-xs sm:text-base font-medium transition-colors border-b-2 -mb-px flex-1 sm:flex-initial sm:whitespace-nowrap ${
             activeTab === "historial"
               ? "text-primary border-primary"
@@ -132,6 +137,11 @@ export function AdminDashboard({ personal: initialPersonal, horarios, areas, adm
         >
           <CalendarClock className="w-4 h-4 hidden sm:block shrink-0" />
           Historial de Horarios
+          {showHistorialBadge && (
+            <span className="ml-1.5 inline-block text-[10px] font-bold uppercase bg-emerald-500 text-white rounded-full px-1.5 py-0.5 animate-pulse-subtle">
+              NEW
+            </span>
+          )}
         </button>
         {adminNivel === 1 && (
           <button
