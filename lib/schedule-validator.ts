@@ -13,6 +13,14 @@ interface HorarioMensual {
 const DIAS_ESPANOL = ["domingo", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado"]
 
 /**
+ * Format a Date object to YYYY-MM-DD using local date components
+ * (avoids toISOString() which converts to UTC and can shift the date)
+ */
+function formatDateLocal(date: Date): string {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`
+}
+
+/**
  * Convert current time to Colombia timezone (GMT-5)
  * Used for Bogotá, Lima, Quito
  * Fixed timezone calculation using direct UTC offset method
@@ -41,7 +49,7 @@ function formatTime(date: Date): string {
  */
 function getTodaySchedule(horariosMensual: HorarioMensual[], horariosSemanales: Horario[], fecha: Date): { jornada_manana?: string; jornada_tarde?: string } | null {
   // First, check monthly schedules
-  const fechaISO = fecha.toISOString().split("T")[0]
+  const fechaISO = formatDateLocal(fecha)
   const monthlySchedule = horariosMensual.find((h) => h.fecha === fechaISO)
   
   if (monthlySchedule && (monthlySchedule.jornada_manana || monthlySchedule.jornada_tarde)) {
@@ -143,7 +151,7 @@ export function getScheduleForDate(
   horariosSemanales: Horario[],
 ): { jornada_manana?: string; jornada_tarde?: string; isSpecific: boolean } {
   // Format fecha to YYYY-MM-DD
-  const fechaISO = fecha.toISOString().split("T")[0]
+  const fechaISO = formatDateLocal(fecha)
 
   // Check if there's a specific schedule for this date
   const specificSchedule = horariosMensual.find((h) => h.fecha === fechaISO)
@@ -177,7 +185,7 @@ export function getScheduleForDate(
  */
 export function isDateInPast(fecha: string): boolean {
   const colombia = getColombiaTime()
-  const todayStr = `${colombia.getFullYear()}-${String(colombia.getMonth() + 1).padStart(2, "0")}-${String(colombia.getDate()).padStart(2, "0")}`
+  const todayStr = formatDateLocal(colombia)
   return fecha < todayStr
 }
 
@@ -196,7 +204,7 @@ export function isWeekFullyPast(mes: number, año: number, numeroSemana: number)
 
   // Check the last valid day in the week — if it's past, the whole week is past
   const lastDate = new Date(año, mes - 1, validEndDay)
-  const lastDateStr = lastDate.toISOString().split("T")[0]
+  const lastDateStr = formatDateLocal(lastDate)
   return isDateInPast(lastDateStr)
 }
 
@@ -205,7 +213,7 @@ export function isWeekFullyPast(mes: number, año: number, numeroSemana: number)
  */
 export function getTodayDateString(): string {
   const colombia = getColombiaTime()
-  return `${colombia.getFullYear()}-${String(colombia.getMonth() + 1).padStart(2, "0")}-${String(colombia.getDate()).padStart(2, "0")}`
+  return formatDateLocal(colombia)
 }
 
 /**
