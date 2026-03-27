@@ -28,6 +28,7 @@ export type Database = {
           en_turno?: boolean
           orden?: number
         }
+        Relationships: []
       }
       horarios: {
         Row: {
@@ -48,6 +49,15 @@ export type Database = {
           jornada_manana?: string | null
           jornada_tarde?: string | null
         }
+        Relationships: [
+          {
+            foreignKeyName: "horarios_personal_id_fkey"
+            columns: ["personal_id"]
+            isOneToOne: false
+            referencedRelation: "personal"
+            referencedColumns: ["id"]
+          }
+        ]
       }
       admin_users: {
         Row: {
@@ -62,6 +72,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          id: string
           email: string
           nombre: string
           nivel: number
@@ -77,7 +88,20 @@ export type Database = {
           password_hash?: string | null
           area?: string[] | null
         }
+        Relationships: []
       }
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      [_ in never]: never
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
     }
   }
 }

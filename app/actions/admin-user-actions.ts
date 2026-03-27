@@ -51,7 +51,8 @@ export async function addAdminUser(
     const { data: authData, error: authError } = await adminClient.auth.admin.createUser({
       email,
       password,
-      user_metadata: {
+      user_metadata: {        
+        app: "turnos",
         nombre,
         nivel,
         area,
